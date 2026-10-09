@@ -1,0 +1,665 @@
+:root {
+    --primary: #2563eb;
+    --success: #16a34a;
+    --error: #dc2626;
+    --bg: #f8fafc;
+    --text: #1e293b;
+    --border: #e2e8f0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+}
+
+/* ІДЕАЛЬНА ШАПКА - НІКОЛИ НЕ ЗЛАМАЄТЬСЯ */
+header {
+    background-color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+h1 {
+    margin: 0;
+    color: var(--primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+h1:hover {
+    opacity: 0.8;
+}
+
+.online-counter {
+    display: flex;
+    align-items: center;
+    background-color: #f1f5f9;
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.95rem;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    background-color: var(--success);
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(22, 163, 74, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+    }
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+nav button {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    color: #64748b;
+    border-radius: 0.5rem;
+    white-space: nowrap;
+}
+
+nav button.active {
+    background-color: #eff6ff;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+nav button:hover {
+    background-color: #f1f5f9;
+}
+
+#langSelect {
+    margin: 0;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background-color: white;
+}
+
+/* ОСНОВНЕ */
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.container {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.content-area {
+    flex: 2;
+    min-width: 300px;
+}
+
+.sidebar {
+    flex: 1;
+    min-width: 250px;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 2rem;
+}
+
+input[type="text"],
+input[type="file"],
+select,
+input[type="password"] {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+button.btn-primary {
+    width: 100%;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 1rem;
+    transition: background 0.2s;
+}
+
+button.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+button.btn-primary:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+button.btn-secondary {
+    background-color: #e2e8f0;
+    color: #475569;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button.btn-secondary:hover {
+    background-color: #cbd5e1;
+}
+
+.card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.card h3 {
+    margin-top: 0;
+    color: var(--primary);
+}
+
+.item-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.history-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.like-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #64748b;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background 0.2s;
+}
+
+.like-btn.liked {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+.rule-body {
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.rule-body img {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+.item-meta {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+/* МОДАЛКА */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    width: 80%;
+    max-width: 1000px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+}
+
+.modal-actions button {
+    width: auto;
+    margin-top: 0;
+}
+
+.flex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+/* ТРЕНАЖЕР */
+.setup-area {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.game-area {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-top: 4px solid var(--primary);
+    position: relative;
+}
+
+.game-target {
+    color: #475569;
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.game-slots {
+    margin: 30px 0;
+    min-height: 60px;
+}
+
+.game-letters {
+    min-height: 80px;
+}
+
+.btn-reset {
+    background-color: #64748b;
+    margin-top: 20px;
+    width: auto;
+    padding: 0.5rem 2rem;
+}
+
+.btn-stop {
+    margin-top: 20px;
+    width: auto;
+    padding: 0.5rem 2rem;
+    background-color: #ef4444;
+}
+
+.feedback-banner {
+    display: none;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    margin-top: 1.5rem;
+    font-size: 1.1rem;
+    animation: popIn 0.3s ease-out;
+}
+
+.feedback-banner.success {
+    display: block;
+    background-color: #dcfce7;
+    color: var(--success);
+    border: 2px solid #bbf7d0;
+}
+
+.feedback-banner.error {
+    display: block;
+    background-color: #fee2e2;
+    color: var(--error);
+    border: 2px solid #fecaca;
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.letter-btn {
+    background: white;
+    border: 2px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 1rem;
+    font-size: 1.5rem;
+    margin: 0.3rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.letter-btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.letter-btn:disabled {
+    opacity: 0;
+    cursor: default;
+    transform: scale(0.8);
+}
+
+.answer-slot {
+    display: inline-block;
+    min-width: 40px;
+    height: 50px;
+    border-bottom: 3px solid var(--primary);
+    margin: 0 5px;
+    font-size: 2rem;
+    font-weight: bold;
+    vertical-align: bottom;
+    line-height: 50px;
+    color: var(--primary);
+}
+
+.expr-slot {
+    display: inline-block;
+    min-width: 60px;
+    height: 40px;
+    border-bottom: 2px solid var(--primary);
+    margin: 0 5px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    vertical-align: bottom;
+    line-height: 40px;
+    color: var(--primary);
+    padding: 0 10px;
+}
+
+.list-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.badge {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+.filter-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.filter-row input {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.filter-row select {
+    margin-bottom: 0;
+    width: 200px;
+    flex-shrink: 0;
+}
+
+/* ДОШКА СТІКЕРІВ */
+.cork-board {
+    background-color: #d1b88e;
+    background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="url(%23n)" opacity="0.3"/></svg>'), linear-gradient(#cda875, #b8905b);
+    padding: 2rem;
+    border-radius: 10px;
+    border: 12px solid #5c4033;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    min-height: 500px;
+    align-items: flex-start;
+}
+
+.sticker {
+    width: 220px;
+    min-height: 180px;
+    padding: 1.5rem;
+    padding-top: 2rem;
+    box-shadow: 3px 5px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    transition: transform 0.2s, z-index 0s;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    word-wrap: break-word;
+    font-size: 1.1rem;
+}
+
+.sticker:hover {
+    transform: scale(1.05) rotate(0deg) !important;
+    z-index: 10;
+}
+
+.pin {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.5rem;
+    text-shadow: 0px 2px 2px rgba(0, 0, 0, 0.3);
+}
+
+.sticker-author {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 3px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.sticker-delete {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    cursor: pointer;
+    color: rgba(220, 38, 38, 0.7);
+    font-size: 1.2rem;
+    background: none;
+    border: none;
+}
+
+.sticker-delete:hover {
+    color: #dc2626;
+}
+
+.sticker img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    margin-top: 10px;
+    max-height: 150px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* ПРАВА ДОСТУПУ */
+body.role-guest .auth-only {
+    display: none !important;
+}
+
+body.role-guest .admin-only {
+    display: none !important;
+}
+
+body.role-user .admin-only {
+    display: none !important;
+}
+
+/* --- СИСТЕМА АВТОРИЗАЦІЇ --- */
+.auth-link {
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: bold;
+    transition: opacity 0.2s;
+}
+
+.auth-link:hover {
+    opacity: 0.7;
+    text-decoration: underline;
+}
+
+/* Стиль для заголовка категорії правил */
+.category-title {
+    background-color: #eff6ff; 
+    color: #1e3a8a;
+    padding: 12px 20px;
+    margin-top: 35px;
+    margin-bottom: 15px;
+    border-left: 5px solid #3b82f6;
+    border-radius: 4px;
+    font-size: 1.3em;
+    font-weight: 700;
+}
+
+/* Обгортка для карток під категорією (щоб був відступ) */
+.category-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Відстань між картками */
+    margin-bottom: 30px;
+}
+
+/* Стиль для окремого правила */
+.rule-item {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.rule-title {
+    margin-top: 0;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 10px;
+}
+
+.rule-content table {
+    margin-top: 10px;
+}
+/* Прибираємо margin-bottom у карток, якщо вони всередині category-wrapper, оскільки використовуємо gap */
+.category-wrapper .card {
+    margin-bottom: 0;
+}

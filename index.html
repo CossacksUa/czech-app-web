@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чеська мова - Навчання</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="role-guest">
+
+    <!-- НАДІЙНА ШАПКА -->
+    <header>
+        <div class="header-left">
+            <h1 onclick="switchTab('rules')">cz <span data-i18n="app_title">Чеська мова</span></h1>
+            <div class="online-counter" title="Користувачів зараз">
+                <span class="pulse-dot"></span>
+                <span data-i18n="online_now">Онлайн:</span> <b id="onlineCount" style="margin-left: 5px;">1</b>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <nav>
+                <button class="nav-btn active" onclick="switchTab('rules')" data-i18n="nav_rules">Правила</button>
+                <button class="nav-btn" onclick="switchTab('dictionary')" data-i18n="nav_words">Словник</button>
+                <button class="nav-btn" onclick="switchTab('expressions')" data-i18n="nav_expr">Вирази</button>
+                <button class="nav-btn" onclick="switchTab('stickers')" data-i18n="nav_stickers">📌 Стікери</button>
+                <button class="nav-btn admin-only" onclick="switchTab('settings')" data-i18n="nav_data">⚙️ Дані</button>
+                <button class="nav-btn" onclick="switchTab('profile')" data-i18n="nav_profile"
+                    style="color: var(--primary); font-weight: bold;">👤 Профіль</button>
+            </nav>
+            <select id="langSelect" onchange="setLang(this.value)">
+                <option value="ua">🇺🇦 Укр</option>
+                <option value="ru">🇷🇺 Рус</option>
+            </select>
+        </div>
+    </header>
+
+    <datalist id="wordThemesList"></datalist>
+    <datalist id="exprThemesList"></datalist>
+
+    <main>
+        <!-- ================= ВКЛАДКА: ПРАВИЛА ================= -->
+        <div id="tab-rules" class="tab-content active">
+            <div class="content-area">
+                <div class="flex-header">
+                    <h2 style="margin: 0;" data-i18n="rules_title">Граматика та Правила</h2>
+                    <button class="btn-primary auth-only" style="width: auto; margin-top: 0;"
+                        onclick="openRuleModal(-1)" data-i18n="btn_add_rule">+ Додати правило</button>
+                </div>
+
+                <!-- ПРАВИЛЬНИЙ ПОШУК І ФІЛЬТР ДЛЯ ПРАВИЛ -->
+                <div class="filter-row">
+                    <input type="text" id="searchRule" data-i18n="search_rules_ph" placeholder="🔍 Швидкий пошук..."
+                        oninput="renderRules()">
+                    <select id="ruleFilterCategory" onchange="renderRules()">
+                        <option value="all">Усі категорії</option>
+                    </select>
+                </div>
+
+                <div id="rulesList"></div>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА: СЛОВНИК ================= -->
+        <div id="tab-dictionary" class="tab-content">
+            <div class="container">
+                <div class="content-area">
+                    <h2 data-i18n="word_train_title">Тренажер слів</h2>
+                    <div class="setup-area" id="wordSetupArea">
+                        <label data-i18n="choose_theme">Оберіть тему для тренування:</label>
+                        <select id="wordTrainTheme"></select>
+                        <button class="btn-primary" onclick="startTraining('word')" data-i18n="btn_start_word">Почати
+                            тренування слів</button>
+                    </div>
+
+                    <div class="game-area" id="wordGameArea" style="display: none;">
+                        <h3 id="wordGameTarget" class="game-target" data-i18n="translate_target">Перекладіть: ...</h3>
+                        <div id="wordGameSlots" class="game-slots"></div>
+                        <div id="wordGameLetters" class="game-letters"></div>
+                        <div id="wordFeedback" class="feedback-banner"></div>
+                        <button class="btn-primary btn-reset" id="wordResetBtn" onclick="resetCurrentWord()"
+                            data-i18n="btn_reset_letters">Скинути літери</button>
+                        <button class="btn-primary btn-stop" onclick="stopTraining('word')"
+                            data-i18n="btn_finish">Завершити</button>
+                    </div>
+
+                    <h2 style="margin-top: 2rem;" data-i18n="your_dict">Ваш словник</h2>
+                    <div class="filter-row">
+                        <input type="text" id="searchRule" data-i18n="search_rules_ph" placeholder="🔍 Швидкий пошук..."
+                            oninput="renderRules()">
+                        <select id="ruleFilterCategory" onchange="renderRules()">
+                            <option value="all">Усі категорії</option>
+                        </select>
+                    </div>
+                    <div id="wordsList" class="card"></div>
+                </div>
+
+                <div class="sidebar auth-only">
+                    <h3 data-i18n="add_new_word">Слово (Додати / Редагувати)</h3>
+                    <input type="text" id="wordCz" data-i18n="ph_word_cz" placeholder="Слово чеською">
+                    <input type="text" id="wordUa" data-i18n="ph_word_ua" placeholder="Переклад (Укр)">
+                    <input type="text" id="wordRu" data-i18n="ph_word_ru" placeholder="Переклад (Рус)">
+                    <input type="text" id="wordTheme" list="wordThemesList" data-i18n="ph_theme_word"
+                        placeholder="Тема">
+                    <button class="btn-primary" id="btnSaveWord" onclick="saveWord()"
+                        data-i18n="btn_save">Зберегти</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА: ВИРАЗИ ================= -->
+        <div id="tab-expressions" class="tab-content">
+            <div class="container">
+                <div class="content-area">
+                    <h2 data-i18n="expr_train_title">Тренажер виразів</h2>
+                    <div class="setup-area" id="exprSetupArea">
+                        <label data-i18n="choose_theme">Оберіть тему для тренування:</label>
+                        <select id="exprTrainTheme"></select>
+                        <button class="btn-primary" onclick="startTraining('expr')" data-i18n="btn_start_expr">Почати
+                            тренування виразів</button>
+                    </div>
+
+                    <div class="game-area" id="exprGameArea" style="display: none;">
+                        <h3 id="exprGameTarget" class="game-target" data-i18n="build_sentence">Зберіть речення: ...</h3>
+                        <div id="exprGameSlots" class="game-slots"></div>
+                        <div id="exprGameWords" class="game-letters"></div>
+                        <div id="exprFeedback" class="feedback-banner"></div>
+                        <button class="btn-primary btn-reset" id="exprResetBtn" onclick="resetCurrentExpr()"
+                            data-i18n="btn_reset_words">Скинути слова</button>
+                        <button class="btn-primary btn-stop" onclick="stopTraining('expr')"
+                            data-i18n="btn_finish">Завершити</button>
+                    </div>
+
+                    <h2 style="margin-top: 2rem;" data-i18n="your_expr">Ваші вирази</h2>
+                    <div class="filter-row">
+                        <input type="text" id="searchWord" data-i18n="search_words_ph" placeholder="🔍 Пошук слів..."
+                            oninput="renderWords()">
+                        <select id="wordFilterTheme" onchange="renderWords()">
+                            <option value="all">Усі теми</option>
+                        </select>
+                    </div>
+                    <div id="exprList" class="card"></div>
+                </div>
+
+                <div class="sidebar auth-only">
+                    <h3 data-i18n="add_expr">Вираз (Додати / Редагувати)</h3>
+                    <input type="text" id="exprCz" data-i18n="ph_expr_cz" placeholder="Фраза чеською">
+                    <input type="text" id="exprUa" data-i18n="ph_expr_ua" placeholder="Переклад (Укр)">
+                    <input type="text" id="exprRu" data-i18n="ph_expr_ru" placeholder="Переклад (Рус)">
+                    <input type="text" id="exprTheme" list="exprThemesList" data-i18n="ph_theme_expr"
+                        placeholder="Тема">
+                    <button class="btn-primary" id="btnSaveExpr" onclick="saveExpression()"
+                        data-i18n="btn_save">Зберегти</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА: СТІКЕРИ ================= -->
+        <div id="tab-stickers" class="tab-content">
+            <h2 data-i18n="stickers_title">Дошка стікерів</h2>
+            <div class="auth-only"
+                style="background: white; padding: 1rem; border-radius: 0.5rem; display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); flex-wrap: wrap;">
+                <input type="text" id="stickerText" placeholder="Напишіть щось..."
+                    style="margin:0; flex:1; min-width: 200px;">
+                <input type="file" id="stickerImage" accept="image/*"
+                    style="margin:0; width:auto; padding: 0.4rem; font-size: 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem;">
+                <select id="stickerColor" style="margin:0; width:auto;">
+                    <option value="#fef3c7" style="background:#fef3c7;">Жовтий</option>
+                    <option value="#dcfce7" style="background:#dcfce7;">Зелений</option>
+                    <option value="#e0e7ff" style="background:#e0e7ff;">Синій</option>
+                    <option value="#fce7f3" style="background:#fce7f3;">Рожевий</option>
+                </select>
+                <button class="btn-primary" style="margin:0; width:auto;" onclick="addSticker()">📌 Прикріпити</button>
+            </div>
+            <div class="cork-board" id="stickersBoard"></div>
+        </div>
+
+        <!-- ================= ВКЛАДКА: ДАНІ (Тільки Адмін) ================= -->
+        <div id="tab-settings" class="tab-content admin-only">
+            <div class="container">
+                <div class="content-area">
+                    <h2>Керування користувачами</h2>
+                    <div class="card">
+                        <table id="usersTable" style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border);">
+                                    <th style="padding: 10px;">Логін</th>
+                                    <th style="padding: 10px;">Telegram ID</th>
+                                    <th style="padding: 10px;">Роль</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="sidebar">
+                    <h2 data-i18n="backup_title">Резервні копії</h2>
+                    <div class="card" style="box-shadow: none; border: 1px solid var(--border);">
+                        <h3 data-i18n="export_title">Експорт</h3>
+                        <button class="btn-primary" onclick="exportData()" data-i18n="btn_export">⬇️ Завантажити
+                            файл</button>
+                    </div>
+                    <div class="card" style="box-shadow: none; border: 1px solid var(--border);">
+                        <h3 data-i18n="import_title">Імпорт</h3>
+                        <p style="color: #ef4444; font-size: 0.9rem;" data-i18n="import_desc">Повністю перезапише дані!
+                        </p>
+                        <input type="file" id="importFile" accept=".json">
+                        <button class="btn-primary" style="background-color: var(--success);" onclick="importData()"
+                            data-i18n="btn_import">⬆️ Відновити</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА: ПРОФІЛЬ ================= -->
+        <div id="tab-profile" class="tab-content">
+            <!-- Екран ВХОДУ / РЕЄСТРАЦІЇ -->
+            <div id="loginView" class="card" style="text-align: center; padding: 3rem 2rem;">
+
+                <!-- Форма Логіну -->
+                <div id="formLogin">
+                    <h2 style="margin-top:0; font-size: 1.8rem;" data-i18n="login_title">Давайте почнемо роботу</h2>
+                    <p style="color: #64748b; margin-bottom: 2rem;">
+                        <span data-i18n="login_subtitle">Введіть вашу пошту/логін та пароль, або</span>
+                        <span class="auth-link" onclick="toggleAuthView('reg')"
+                            data-i18n="link_register">зареєструйтесь</span>
+                    </p>
+                    <input type="text" id="loginUsername" data-i18n="ph_username" placeholder="Логін"
+                        style="background: #f8fafc; border: none; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+                    <input type="password" id="loginPassword" data-i18n="ph_password" placeholder="Пароль"
+                        style="background: #f8fafc; border: none; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;">
+                    <button class="btn-primary" onclick="loginUser()" data-i18n="btn_login"
+                        style="padding: 1rem;">Увійти в кабінет</button>
+                </div>
+
+                <!-- Форма Реєстрації -->
+                <div id="formRegister" style="display: none;">
+                    <h2 style="margin-top:0; font-size: 1.8rem;" data-i18n="reg_title">Створення акаунта</h2>
+                    <p style="color: #64748b; margin-bottom: 2rem;">
+                        <span data-i18n="reg_subtitle">Вже маєте акаунт?</span>
+                        <span class="auth-link" onclick="toggleAuthView('login')" data-i18n="link_login">Увійдіть</span>
+                    </p>
+                    <input type="text" id="regUsername" data-i18n="ph_username" placeholder="Логін"
+                        style="background: #f8fafc; border: none; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+                    <input type="password" id="regPassword" data-i18n="ph_password" placeholder="Пароль"
+                        style="background: #f8fafc; border: none; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;">
+                    <button class="btn-primary" onclick="registerUser()" data-i18n="btn_register"
+                        style="padding: 1rem;">Зареєструватися</button>
+                </div>
+
+            </div>
+
+            <div id="profileView" class="card" style="display: none;">
+                <h2 data-i18n="profile_title" style="margin-top:0;">Особистий кабінет</h2>
+                <div style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                    <strong data-i18n="prof_username">Користувач:</strong> <span id="profName"
+                        style="color: var(--primary); font-weight: bold;">...</span><br><br>
+                    <strong data-i18n="prof_role">Роль:</strong> <span id="profRole" class="badge"
+                        style="background:#dcfce7; color:#16a34a; font-size: 1rem;">...</span>
+                </div>
+
+                <!-- ОНОВЛЕНИЙ БЛОК ТЕЛЕГРАМ -->
+                <div
+                    style="background: #eff6ff; padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border: 1px solid #bfdbfe;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin: 0; color:#1e40af;" data-i18n="tg_integration">Інтеграція з Telegram</h3>
+
+                        <!-- ПОСИЛАННЯ НА БОТА (Вставте свій нікнейм бота замість ВАШ_БОТ) -->
+                        <a href="https://t.me/DMBCapybara_bot" target="_blank" class="btn-primary"
+                            style="width: auto; margin: 0; background-color: #0088cc; text-decoration: none; display: inline-block; padding: 0.4rem 1rem;"
+                            data-i18n="btn_open_bot">Відкрити бота ↗</a>
+                    </div>
+
+                    <p style="font-size: 0.95rem; color: #1e3a8a; line-height: 1.5;" data-i18n="tg_instruction">
+                        1. Перейдіть у бота та натисніть <b>Start</b>.<br>
+                        2. Бот видасть вам ваш унікальний ID.<br>
+                        3. Скопіюйте його та вставте у поле нижче для підключення.
+                    </p>
+
+                    <input type="text" id="tgIdInput" data-i18n="ph_tg_id" placeholder="Ваш Telegram ID">
+                    <button class="btn-primary" style="margin-top: 0.5rem; background-color: #2563eb;"
+                        onclick="saveTgId()" data-i18n="btn_save_tg">Підключити Telegram</button>
+                </div>
+
+                <button class="btn-secondary" style="width: 100%; color: #ef4444; border: 1px solid #fecaca;"
+                    onclick="fakeLogout()" data-i18n="btn_logout">Вийти з акаунта</button>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <!-- МОДАЛЬНЕ ВІКНО: РЕДАКТОР ПРАВИЛ -->
+    <div id="ruleModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 data-i18n="modal_title">Правило (Редактор)</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                <button id="modalTabUa" class="btn-primary" onclick="switchModalLang('ua')"
+                    style="margin:0; width:50%;">🇺🇦 Українська версія</button>
+                <button id="modalTabRu" class="btn-secondary" onclick="switchModalLang('ru')"
+                    style="margin:0; width:50%;">🇷🇺 Русская версия</button>
+            </div>
+
+            <!-- НОВОЕ ПОЛЕ: Категория с автодополнением существующих -->
+            <input type="text" id="ruleCategory" list="ruleCategoryList" placeholder="Категорія (напр., 🔠 Відмінки)">
+            <datalist id="ruleCategoryList"></datalist>
+
+            <input type="text" id="ruleTitle" data-i18n="ph_rule_title" placeholder="Назва правила">
+            <textarea id="ruleEditor"></textarea>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeRuleModal()" data-i18n="btn_cancel">Скасувати</button>
+                <button class="btn-primary" onclick="saveRule()" data-i18n="btn_save_rule">Зберегти</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНЕ ВІКНО: ІСТОРІЯ КОНКРЕТНОГО ЗАПИСУ -->
+    <div id="itemHistoryModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2 data-i18n="item_history_title">Історія змін запису</h2>
+            <div id="itemHistoryContent"
+                style="max-height: 400px; overflow-y: auto; background: #f8fafc; padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border); font-size: 0.95rem;">
+                <!-- Логи конкретного елемента -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeItemHistoryModal()" data-i18n="btn_cancel">Закрити</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
