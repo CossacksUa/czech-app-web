@@ -95,7 +95,7 @@ window.onload = () => {
     setLang(currentLang, true);
     checkAuth();
     loadCloudData();
-    simulateOnlineUsers();
+    trackRealOnlineUsers(); // Змінено: тепер запускаємо реальний трекер
 };
 
 function checkAuth() {
@@ -591,7 +591,41 @@ function setLang(lang, isInit = false) {
 
 function switchTab(tabId) { if (tabId === 'settings' && !isAdmin()) return; document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active')); document.getElementById(`tab-${tabId}`).classList.add('active'); if (event && event.target.tagName === 'BUTTON') event.target.classList.add('active'); }
 
-function simulateOnlineUsers() { let baseOnline = Math.floor(Math.random() * 5) + 2; setInterval(() => { if (Math.random() > 0.5) { baseOnline += Math.random() > 0.5 ? 1 : -1; if (baseOnline < 1) baseOnline = 1; document.getElementById('onlineCount').innerText = baseOnline; } }, 5000); }
+//function simulateOnlineUsers() { let baseOnline = Math.floor(Math.random() * 5) + 2; setInterval(() => { if (Math.random() > 0.5) { baseOnline += Math.random() > 0.5 ? 1 : -1; if (baseOnline < 1) baseOnline = 1; document.getElementById('onlineCount').innerText = baseOnline; } }, 5000); }
+
+//
+function trackRealOnlineUsers() {
+    // Створюємо унікальний ID для поточної відкритої вкладки
+    const sessionId = Math.random().toString(36).substring(2, 15);
+
+    // Створюємо спеціальний канал для відстеження присутніх
+    const onlineChannel = db.channel('online-room', {
+        config: {
+            presence: { key: sessionId }
+        }
+    });
+
+    // Слухаємо оновлення: хтось зайшов або вийшов
+    onlineChannel.on('presence', { event: 'sync' }, () => {
+        const presenceState = onlineChannel.presenceState();
+        // Рахуємо кількість унікальних підключень (людей онлайн)
+        const realOnlineCount = Object.keys(presenceState).length;
+
+        // Оновлюємо цифру на сайті
+        document.getElementById('onlineCount').innerText = realOnlineCount > 0 ? realOnlineCount : 1;
+    });
+
+    // Підписуємося на канал і повідомляємо, що ми зайшли
+    onlineChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await onlineChannel.track({
+                online_at: new Date().toISOString()
+            });
+        }
+    });
+}
+
+//
 
 let trainQueue = []; let currentItem = null; let currentAnswer = []; let itemParts = []; let isAnimating = false;
 function startTraining(type) { const theme = document.getElementById(`${type}TrainTheme`).value; const source = type === 'word' ? dictionary : expressions; let pool = theme === 'all' ? [...source] : source.filter(x => x.theme === theme); if (pool.length === 0) return alert(t('alert_no_elements')); trainQueue = pool.sort(() => 0.5 - Math.random()); document.getElementById(`${type}SetupArea`).style.display = 'none'; document.getElementById(`${type}GameArea`).style.display = 'block'; nextTrainItem(type); }
