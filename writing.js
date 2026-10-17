@@ -294,29 +294,45 @@ function speakCurrentWord() {
     const target = getCurrentTarget();
     if (!target || !target.text) return;
 
-    // Зупиняємо попередній звук, якщо він грав
+    // Зупиняємо попередній звук
     if (window.currentAudio) {
         window.currentAudio.pause();
         window.currentAudio.currentTime = 0;
     }
 
-    // Хмарний аудіо-рушій з природною чеською вимовою
+    // Пробуємо відтворити через онлайн-сервіс
     const ttsUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Zuzana&text=${encodeURIComponent(target.text)}`;
-    
     window.currentAudio = new Audio(ttsUrl);
-    
+
     window.currentAudio.play().catch(error => {
-        console.warn("Мережевий збій аудіо, перемикаємось на резервний голос:", error);
+        console.warn("Перемикаємось на якісний системний голос через мережевий збій:", error);
         
-        // Резервний варіант на випадок відсутності інтернету
+        // Якщо хмару заблоковано, використовуємо SpeechSynthesis з примусовим пошуком чеського голосу
+        if (!window.speechSynthesis) return;
         window.speechSynthesis.cancel();
+
         const utterance = new SpeechSynthesisUtterance(target.text);
         utterance.lang = 'cs-CZ';
-        utterance.rate = 0.9;
+        utterance.rate = 0.85; // Робимо швидкість трохи плавжнішою для природності
+
+        // Шукаємо саме чеський голос у системі браузера
+        const voices = window.speechSynthesis.getVoices();
+        const czVoice = voices.find(v => v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz'));
+        if (czVoice) {
+            utterance.voice = czVoice;
+        }
+
         window.speechSynthesis.speak(utterance);
     });
 }
 
+// Попереднє завантаження голосів браузера
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+}
 
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
