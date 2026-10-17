@@ -91,7 +91,9 @@ async function loadCloudData() {
 }
 
 window.onload = () => {
-    document.getElementById('langSelect').value = currentLang;
+    const langSelectEl = document.getElementById('langSelect');
+    if (langSelectEl) langSelectEl.value = currentLang;
+
     setLang(currentLang, true);
     checkAuth();
     loadCloudData();
@@ -100,15 +102,29 @@ window.onload = () => {
 
 function checkAuth() {
     if (currentUser) {
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('profileView').style.display = 'block';
-        document.getElementById('profName').innerText = currentUser.username;
-        document.getElementById('profRole').innerText = currentUser.role === 'admin' ? t('role_admin') : t('role_user');
-        document.getElementById('tgIdInput').value = currentUser.tg_id || '';
+        const loginView = document.getElementById('loginView');
+        if (loginView) loginView.style.display = 'none';
+
+        const profileView = document.getElementById('profileView');
+        if (profileView) profileView.style.display = 'block';
+
+        const profName = document.getElementById('profName');
+        if (profName) profName.innerText = currentUser.username;
+
+        const profRole = document.getElementById('profRole');
+        if (profRole) profRole.innerText = currentUser.role === 'admin' ? t('role_admin') : t('role_user');
+
+        const tgIdInput = document.getElementById('tgIdInput');
+        if (tgIdInput) tgIdInput.value = currentUser.tg_id || '';
+
         document.body.className = currentUser.role === 'admin' ? 'role-admin' : 'role-user';
     } else {
-        document.getElementById('loginView').style.display = 'block';
-        document.getElementById('profileView').style.display = 'none';
+        const loginView = document.getElementById('loginView');
+        if (loginView) loginView.style.display = 'block';
+
+        const profileView = document.getElementById('profileView');
+        if (profileView) profileView.style.display = 'none';
+
         document.body.className = 'role-guest';
     }
 }
@@ -213,7 +229,9 @@ async function addLog(actionKey, entityType, entityName, extraInfo = '') {
 }
 
 function renderHistory() {
-    const list = document.getElementById('historyLogsList'); if (!list) return; list.innerHTML = '';
+    const list = document.getElementById('historyLogsList');
+    if (!list) return; // Захист для сторінки тренажера
+    list.innerHTML = '';
     if (historyLogs.length === 0) { list.innerHTML = `<div style="text-align:center; color:#94a3b8;">${t('hist_empty')}</div>`; return; }
     historyLogs.forEach(log => {
         const d = new Date(log.time); const timeStr = d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -545,7 +563,9 @@ async function saveExpression() {
 async function deleteExpr(index) { if (!canDelete(expressions[index])) return; if (confirm(t('msg_del_confirm'))) { await db.from('expressions').delete().eq('id', expressions[index].id); await addLog('act_del', 'expr', expressions[index].cz); await loadCloudData(); } }
 
 function renderStickers() {
-    const board = document.getElementById('stickersBoard'); board.innerHTML = '';
+    const board = document.getElementById('stickersBoard');
+    if (!board) return; // Додайте цей рядок захисту
+    board.innerHTML = '';
     stickers.forEach((s, i) => {
         let rotation = (i % 2 === 0 ? -3 : 3) + (Math.random() * 2);
         let delBtn = canDelete(s) ? `<button class="sticker-delete" onclick="deleteSticker(${i})">✖</button>` : '';
@@ -584,12 +604,36 @@ async function deleteSticker(i) { if (!canDelete(stickers[i])) return; if (confi
 function setLang(lang, isInit = false) {
     currentLang = lang; localStorage.setItem('czAppLang', lang);
     document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (i18n[lang][key]) { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = i18n[lang][key]; else el.innerHTML = i18n[lang][key]; } });
-    let savedContent = ruleEditor ? ruleEditor.value : ''; if (ruleEditor) ruleEditor.destruct();
-    ruleEditor = Jodit.make('#ruleEditor', { height: 400, language: lang === 'ua' ? 'uk' : 'ru', uploader: { insertImageAsBase64URI: true } });
-    if (savedContent) ruleEditor.value = savedContent; checkAuth();
+
+    // Безопасная инициализация Jodit только если элемент существует на странице
+    let savedContent = ruleEditor ? ruleEditor.value : '';
+    if (ruleEditor) ruleEditor.destruct();
+
+    if (document.getElementById('ruleEditor')) {
+        ruleEditor = Jodit.make('#ruleEditor', { height: 400, language: lang === 'ua' ? 'uk' : 'ru', uploader: { insertImageAsBase64URI: true } });
+        if (savedContent) ruleEditor.value = savedContent;
+    }
+
+    checkAuth();
 }
 
-function switchTab(tabId) { if (tabId === 'settings' && !isAdmin()) return; document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active')); document.getElementById(`tab-${tabId}`).classList.add('active'); if (event && event.target.tagName === 'BUTTON') event.target.classList.add('active'); }
+function switchTab(tabId) { 
+    if (tabId === 'settings' && !isAdmin()) return; 
+    
+    // Примусово зупиняємо тренування, щоб вони не накладалися при переході
+    if (typeof stopTraining === 'function') {
+        stopTraining('word');
+        stopTraining('expr');
+    }
+
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); 
+    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active')); 
+    document.getElementById(`tab-${tabId}`).classList.add('active'); 
+    
+    if (event && event.target && event.target.tagName === 'BUTTON') {
+        event.target.classList.add('active'); 
+    }
+}
 
 //function simulateOnlineUsers() { let baseOnline = Math.floor(Math.random() * 5) + 2; setInterval(() => { if (Math.random() > 0.5) { baseOnline += Math.random() > 0.5 ? 1 : -1; if (baseOnline < 1) baseOnline = 1; document.getElementById('onlineCount').innerText = baseOnline; } }, 5000); }
 
@@ -611,8 +655,11 @@ function trackRealOnlineUsers() {
         // Рахуємо кількість унікальних підключень (людей онлайн)
         const realOnlineCount = Object.keys(presenceState).length;
 
-        // Оновлюємо цифру на сайті
-        document.getElementById('onlineCount').innerText = realOnlineCount > 0 ? realOnlineCount : 1;
+        // Оновлюємо цифру на сайті безпечно (тільки якщо елемент існує)
+        const onlineCountEl = document.getElementById('onlineCount');
+        if (onlineCountEl) {
+            onlineCountEl.innerText = realOnlineCount > 0 ? realOnlineCount : 1;
+        }
     });
 
     // Підписуємося на канал і повідомляємо, що ми зайшли
@@ -628,7 +675,22 @@ function trackRealOnlineUsers() {
 //
 
 let trainQueue = []; let currentItem = null; let currentAnswer = []; let itemParts = []; let isAnimating = false;
-function startTraining(type) { const theme = document.getElementById(`${type}TrainTheme`).value; const source = type === 'word' ? dictionary : expressions; let pool = theme === 'all' ? [...source] : source.filter(x => x.theme === theme); if (pool.length === 0) return alert(t('alert_no_elements')); trainQueue = pool.sort(() => 0.5 - Math.random()); document.getElementById(`${type}SetupArea`).style.display = 'none'; document.getElementById(`${type}GameArea`).style.display = 'block'; nextTrainItem(type); }
+function startTraining(type) { 
+    // Захист від накладання: зупиняємо протилежний тип тренування
+    const oppositeType = type === 'word' ? 'expr' : 'word';
+    stopTraining(oppositeType);
+
+    const theme = document.getElementById(`${type}TrainTheme`).value; 
+    const source = type === 'word' ? dictionary : expressions; 
+    let pool = theme === 'all' ? [...source] : source.filter(x => x.theme === theme); 
+    
+    if (pool.length === 0) return alert(t('alert_no_elements')); 
+    
+    trainQueue = pool.sort(() => 0.5 - Math.random()); 
+    document.getElementById(`${type}SetupArea`).style.display = 'none'; 
+    document.getElementById(`${type}GameArea`).style.display = 'block'; 
+    nextTrainItem(type); 
+}
 function stopTraining(type) { document.getElementById(`${type}SetupArea`).style.display = 'block'; document.getElementById(`${type}GameArea`).style.display = 'none'; trainQueue = []; }
 function nextTrainItem(type) { if (trainQueue.length === 0) { alert(t('alert_train_done')); stopTraining(type); return; } isAnimating = false; currentItem = trainQueue.shift(); currentAnswer = []; document.getElementById(`${type}Feedback`).className = 'feedback-banner'; document.getElementById(`${type}ResetBtn`).disabled = false; const prefix = type === 'word' ? (currentLang === 'ua' ? 'Перекладіть: ' : 'Переведите: ') : (currentLang === 'ua' ? 'Зберіть речення: ' : 'Соберите предложение: '); document.getElementById(`${type}GameTarget`).innerText = prefix + (currentItem[currentLang] || currentItem['ua']); let parts = type === 'word' ? currentItem.cz.split('') : currentItem.cz.split(' '); itemParts = [...parts].sort(() => 0.5 - Math.random()).map((p, i) => ({ id: i, text: p, used: false })); updateTrainUI(type, parts.length); }
 function updateTrainUI(type, tLen) { const sDiv = document.getElementById(`${type}GameSlots`); const pDiv = document.getElementById(type === 'word' ? 'wordGameLetters' : 'exprGameWords'); const sCls = type === 'word' ? 'answer-slot' : 'expr-slot'; sDiv.innerHTML = ''; for (let i = 0; i < tLen; i++) sDiv.innerHTML += `<div class="${sCls}">${currentAnswer[i] ? currentAnswer[i].text : ''}</div>`; pDiv.innerHTML = ''; itemParts.forEach(b => pDiv.innerHTML += `<button class="letter-btn" ${b.used || isAnimating ? 'disabled' : ''} onclick="pickPart('${type}', ${b.id})">${b.text}</button>`); if (currentAnswer.length === tLen && !isAnimating) checkAnswer(type); }
