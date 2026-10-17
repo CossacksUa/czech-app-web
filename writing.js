@@ -291,33 +291,25 @@ function returnToStart() {
 }
 
 function speakCurrentWord() {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+    }
+
     const target = getCurrentTarget();
     if (!target || !target.text) return;
-
-    // Зупиняємо будь-яке поточне звучання, щоб фрази не накладалися
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(target.text);
-    utterance.lang = 'cs-CZ';
-
-    // Налаштування інтонації та швидкості для природного звучання чеської мови
-    // Для довгих речень робимо мовлення трохи повільнішим і м'якшим
-    if (target.isSentence) {
-        utterance.rate = 0.85;  // Оптимальна швидкість для сприйняття речень на слух
-        utterance.pitch = 1.0;  // Природна інтонація
-    } else {
-        utterance.rate = 0.90;  // Чітка швидкість для окремих слів
-        utterance.pitch = 1.0;
-    }
-
-    // Підбираємо найкращий доступний чеський голос у браузері користувача
-    const voices = window.speechSynthesis.getVoices();
-    const czVoice = voices.find(voice => voice.lang.includes('cs') || voice.lang.includes('CS'));
-    if (czVoice) {
-        utterance.voice = czVoice;
-    }
-
-    window.speechSynthesis.speak(utterance);
+    
+    const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(target.text)}&tl=cs&client=tw-ob`;
+    currentAudio = new Audio(googleTTSUrl);
+    
+    currentAudio.play().catch(() => {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(target.text);
+        utterance.lang = 'cs-CZ';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    });
 }
 
 // Попередня ініціалізація списку голосів браузера
