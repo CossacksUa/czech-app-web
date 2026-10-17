@@ -290,35 +290,45 @@ function returnToStart() {
     if (startScreen) startScreen.classList.remove("hidden");
 }
 
+// Глобальна змінна для збереження чеського голосу
+let cachedCzVoice = null;
+
+function loadSpeechVoices() {
+    if (!window.speechSynthesis) return;
+    const voices = window.speechSynthesis.getVoices();
+    // Шукаємо чеський голос у системі браузера
+    cachedCzVoice = voices.find(v => v.lang === 'cs-CZ' || v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz')) || null;
+}
+
+// Завантажуємо голоси при старті та при зміні списку
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+    loadSpeechVoices();
+    window.speechSynthesis.onvoiceschanged = loadSpeechVoices;
+}
+
 function speakCurrentWord() {
     const target = getCurrentTarget();
     if (!target || !target.text) return;
 
-    if (window.currentAudio) {
-        window.currentAudio.pause();
-        window.currentAudio.currentTime = 0;
+    // Зупиняємо попереднє озвучення
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
     }
 
-    const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(target.text)}&tl=cs&client=tw-ob`;
-    window.currentAudio = new Audio(googleTTSUrl);
+    const utterance = new SpeechSynthesisUtterance(target.text);
+    utterance.lang = 'cs-CZ';
+    utterance.rate = 0.9; // Чітка і спокійна швидкість
 
-    // Пробуємо відтворити через Google TTS
-    window.currentAudio.play().catch(() => {
-        // Якщо Google заблокував запит (CORS на хостингу), використовуємо SpeechSynthesis з правильним чеським голосом
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(target.text);
-        utterance.lang = 'cs-CZ';
-        utterance.rate = 0.9;
+    // Якщо голос ще не підвантажився, намагаємося отримати його знову
+    if (!cachedCzVoice) {
+        loadSpeechVoices();
+    }
+    
+    if (cachedCzVoice) {
+        utterance.voice = cachedCzVoice;
+    }
 
-        // Функція для пошуку чеського голосу
-        const voices = window.speechSynthesis.getVoices();
-        const czVoice = voices.find(v => v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz'));
-        if (czVoice) {
-            utterance.voice = czVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
-    });
+    window.speechSynthesis.speak(utterance);
 }
 
 function getCurrentTarget() {
