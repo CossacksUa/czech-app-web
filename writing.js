@@ -290,46 +290,33 @@ function returnToStart() {
     if (startScreen) startScreen.classList.remove("hidden");
 }
 
-// Глобальна змінна для збереження чеського голосу
-let cachedCzVoice = null;
-
-function loadSpeechVoices() {
-    if (!window.speechSynthesis) return;
-    const voices = window.speechSynthesis.getVoices();
-    // Шукаємо чеський голос у системі браузера
-    cachedCzVoice = voices.find(v => v.lang === 'cs-CZ' || v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz')) || null;
-}
-
-// Завантажуємо голоси при старті та при зміні списку
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-    loadSpeechVoices();
-    window.speechSynthesis.onvoiceschanged = loadSpeechVoices;
-}
-
 function speakCurrentWord() {
     const target = getCurrentTarget();
     if (!target || !target.text) return;
 
-    // Зупиняємо попереднє озвучення
-    if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+    // Зупиняємо попередній звук, якщо він грав
+    if (window.currentAudio) {
+        window.currentAudio.pause();
+        window.currentAudio.currentTime = 0;
     }
 
-    const utterance = new SpeechSynthesisUtterance(target.text);
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.9; // Чітка і спокійна швидкість
-
-    // Якщо голос ще не підвантажився, намагаємося отримати його знову
-    if (!cachedCzVoice) {
-        loadSpeechVoices();
-    }
+    // Хмарний аудіо-рушій з природною чеською вимовою
+    const ttsUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Zuzana&text=${encodeURIComponent(target.text)}`;
     
-    if (cachedCzVoice) {
-        utterance.voice = cachedCzVoice;
-    }
-
-    window.speechSynthesis.speak(utterance);
+    window.currentAudio = new Audio(ttsUrl);
+    
+    window.currentAudio.play().catch(error => {
+        console.warn("Мережевий збій аудіо, перемикаємось на резервний голос:", error);
+        
+        // Резервний варіант на випадок відсутності інтернету
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(target.text);
+        utterance.lang = 'cs-CZ';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    });
 }
+
 
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
