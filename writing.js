@@ -291,32 +291,34 @@ function returnToStart() {
 }
 
 function speakCurrentWord() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        currentAudio = null;
-    }
-
     const target = getCurrentTarget();
     if (!target || !target.text) return;
-    
+
+    if (window.currentAudio) {
+        window.currentAudio.pause();
+        window.currentAudio.currentTime = 0;
+    }
+
     const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(target.text)}&tl=cs&client=tw-ob`;
-    currentAudio = new Audio(googleTTSUrl);
-    
-    currentAudio.play().catch(() => {
+    window.currentAudio = new Audio(googleTTSUrl);
+
+    // Пробуємо відтворити через Google TTS
+    window.currentAudio.play().catch(() => {
+        // Якщо Google заблокував запит (CORS на хостингу), використовуємо SpeechSynthesis з правильним чеським голосом
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(target.text);
         utterance.lang = 'cs-CZ';
         utterance.rate = 0.9;
+
+        // Функція для пошуку чеського голосу
+        const voices = window.speechSynthesis.getVoices();
+        const czVoice = voices.find(v => v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz'));
+        if (czVoice) {
+            utterance.voice = czVoice;
+        }
+
         window.speechSynthesis.speak(utterance);
     });
-}
-
-// Попередня ініціалізація списку голосів браузера
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-    };
 }
 
 function getCurrentTarget() {
