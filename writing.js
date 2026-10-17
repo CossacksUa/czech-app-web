@@ -23,6 +23,14 @@ const finishModal = document.getElementById("finishModal");
 const wordsGrid = document.getElementById("wordsGrid");
 const categorySelect = document.getElementById("categorySelect");
 
+// Словник для гарного відображення категорій
+const CATEGORY_MAP = {
+    'news': '📰 Новини',
+    'tongue_twister': '👅 Скоромовки',
+    'story': '📖 Історії',
+    'article': '📑 Статті'
+};
+
 // --- ДИНАМІЧНЕ ЗАВАНТАЖЕННЯ КАТЕГОРІЙ ЗАЛЕЖНО ВІД ОБРАНИХ ДЖЕРЕЛ ---
 async function initCategories() {
     let attempts = 0;
@@ -44,7 +52,6 @@ async function initCategories() {
     try {
         const categoriesSet = new Set();
 
-        // 1. Словник
         if (useDict) {
             try {
                 const { data } = await db.from('dictionary').select('theme');
@@ -52,7 +59,6 @@ async function initCategories() {
             } catch (e) {}
         }
 
-        // 2. Вирази
         if (useExpr) {
             try {
                 const { data } = await db.from('expressions').select('theme');
@@ -60,7 +66,6 @@ async function initCategories() {
             } catch (e) {}
         }
 
-        // 3. Речення
         if (useTraining) {
             try {
                 const { data } = await db.from('training_words').select('category');
@@ -68,7 +73,6 @@ async function initCategories() {
             } catch (e) {}
         }
 
-        // 4. Тексти
         if (useTexts) {
             try {
                 const { data } = await db.from('texts').select('category');
@@ -76,7 +80,6 @@ async function initCategories() {
             } catch (e) {}
         }
 
-        // Зберігаємо поточне значення, щоб воно не збивалося при оновленні списку
         const currentValue = selectEl.value;
 
         selectEl.innerHTML = `<option value="all">🌐 Усі категорії та теми</option>`;
@@ -88,7 +91,6 @@ async function initCategories() {
             selectEl.appendChild(option);
         });
 
-        // Відновлюємо вибір, якщо він ще актуальний
         if (Array.from(selectEl.options).some(opt => opt.value === currentValue)) {
             selectEl.value = currentValue;
         } else {
@@ -100,9 +102,9 @@ async function initCategories() {
     }
 }
 
-// Слухаємо зміни чекбоксів джерел, щоб динамічно міняти список тем
+// Слухаємо зміну чекбоксів джерел
 document.addEventListener('change', (e) => {
-    if (e.target && (e.target.id === 'sourceDict' || e.target.id === 'sourceExpr' || e.target.id === 'sourceTraining' || e.target.id === 'sourceTexts')) {
+    if (e.target && ['sourceDict', 'sourceExpr', 'sourceTraining', 'sourceTexts'].includes(e.target.id)) {
         initCategories();
     }
 });
@@ -111,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCategories();
 });
 
-// --- ВИБІР КІЛЬКОСТІ (КНОПКИ ТА ІНПУТ) ---
+// --- ВИБІР КІЛЬКОСТІ ---
 function selectLimit(limit) {
     itemLimit = limit;
     document.getElementById("limit5Btn")?.classList.toggle("active", limit === 5);
@@ -135,16 +137,7 @@ function customLimitInputChanged() {
     }
 }
 
-// Словник для гарного відображення категорій
-const CATEGORY_MAP = {
-    'news': '📰 Новини',
-    'tongue_twister': '👅 Скоромовки',
-    'story': '📖 Історії',
-    'article': '📑 Статті'
-};
-
-
-// --- ЗАВАНТАЖЕННЯ ДАНИХ З БД (ПІД ВАШУ СХЕМУ) ---
+// --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
         if (typeof db === 'undefined' || !db) {
@@ -155,6 +148,7 @@ async function loadTrainingDataFromDB() {
         const useDict = document.getElementById('sourceDict')?.checked ?? true;
         const useExpr = document.getElementById('sourceExpr')?.checked ?? true;
         const useTraining = document.getElementById('sourceTraining')?.checked ?? true;
+        const useTexts = document.getElementById('sourceTexts')?.checked ?? true; // Обов'язково додано!
         const selectedCategory = document.getElementById('categorySelect')?.value ?? 'all';
         
         const inputField = document.getElementById('itemLimitInput');
@@ -165,7 +159,7 @@ async function loadTrainingDataFromDB() {
 
         let combinedData = [];
 
-        // 1. Словник (dictionary)
+        // 1. Словник
         if (useDict) {
             const { data, error } = await db.from('dictionary').select('*');
             if (!error && data) {
@@ -187,7 +181,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 2. Вирази (expressions)
+        // 2. Вирази
         if (useExpr) {
             const { data, error } = await db.from('expressions').select('*');
             if (!error && data) {
@@ -209,11 +203,9 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 3. Речення (training_words — точна відповідність вашій таблиці)
+        // 3. Речення
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
-            console.log("training_words data:", data, "error:", error);
-
             if (!error && data) {
                 data.forEach(item => {
                     const cat = item.category || 'Різне';
@@ -236,33 +228,31 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 4. Тексти (texts)
-if (useTexts) {
-    const { data, error } = await db.from('texts').select('*');
-    if (!error && data) {
-        data.forEach(item => {
-            const cat = item.category || 'other';
-            
-            // Перевірка фільтра за категорією
-            if (selectedCategory !== 'all' && cat !== selectedCategory) return;
+        // 4. Тексти
+        if (useTexts) {
+            const { data, error } = await db.from('texts').select('*');
+            if (!error && data) {
+                data.forEach(item => {
+                    const cat = item.category || 'other';
+                    if (selectedCategory !== 'all' && cat !== selectedCategory) return;
 
-            const textCs = item.text_cs || '';
-            const textUa = item.text_ua || '';
+                    const textCs = item.text_cs || '';
+                    const textUa = item.text_ua || '';
 
-            if (textCs) {
-                combinedData.push({
-                    word: item.title || 'Текст',
-                    translation: textUa,
-                    emoji: '📄',
-                    sentences: [{
-                        text: textCs,
-                        translation: textUa
-                    }]
+                    if (textCs) {
+                        combinedData.push({
+                            word: item.title || 'Текст',
+                            translation: textUa,
+                            emoji: '📄',
+                            sentences: [{
+                                text: textCs,
+                                translation: textUa
+                            }]
+                        });
+                    }
                 });
             }
-        });
-    }
-}
+        }
 
         if (combinedData.length > 0) {
             shuffleArray(combinedData);
@@ -303,7 +293,6 @@ function calculateTotalSteps() {
     currentStep = 0;
 }
 
-// --- НАЛАШТУВАННЯ ІГРОВОГО ПРОЦЕСУ ---
 function selectGameMode(mode) {
     gameMode = mode;
     document.getElementById("modeWordBtn")?.classList.toggle("active", mode === 'word');
@@ -316,7 +305,6 @@ function selectSpaceMode(val) {
     document.getElementById("spaceOffBtn")?.classList.toggle("active", val === false);
 }
 
-// Звуковий модуль (Web Audio API)
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playErrorSound() {
@@ -381,21 +369,11 @@ function speakCurrentWord() {
         window.currentAudio.currentTime = 0;
     }
 
-    // Запит іде на серверний роут Vercel (/api/tts), який обходить усі блокування
     const ttsUrl = `/api/tts?text=${encodeURIComponent(target.text)}`;
-    
     window.currentAudio = new Audio(ttsUrl);
     window.currentAudio.play().catch(error => {
         console.error("Помилка відтворення аудіо:", error);
     });
-}
-
-// Попереднє завантаження голосів браузера
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.getVoices();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-    }
 }
 
 function getCurrentTarget() {
@@ -412,7 +390,6 @@ function getCurrentTarget() {
             return { text: item.word, translation: item.translation, isSentence: false };
         }
     } else {
-        // Режим Слова + Речення
         if (currentSentenceIndex === -1) {
             if (!item.word && sentences.length > 0) {
                 return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
@@ -554,12 +531,11 @@ window.addEventListener("keydown", (e) => {
                         currentWordIndex++;
                     }
                 } else {
-                    // Режим Слова + Речення
                     if (currentSentenceIndex === -1) {
                         if (item.word && sentences.length > 0) {
-                            currentSentenceIndex = 0; // переходимо до першого речення слова
+                            currentSentenceIndex = 0;
                         } else {
-                            currentWordIndex++; // якщо речень немає, одразу до наступного слова
+                            currentWordIndex++;
                         }
                     } else {
                         currentSentenceIndex++;
