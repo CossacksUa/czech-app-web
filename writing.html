@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер сліпого вводу - Чеська мова</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="writing.css">
+
+</head>
+
+<body>
+
+    <!-- ЕКРАН 1: СТАРТОВЕ МЕНЮ НАЛАШТУВАНЬ -->
+    <div id="startScreen" class="start-screen-overlay">
+        <div class="start-card">
+            <div class="start-icon">⌨️</div>
+            <h1>Тренажер письма</h1>
+            <p>Оберіть параметри тренування перед початком:</p>
+
+            <!-- Режим гри -->
+            <div class="settings-group">
+                <label class="setting-label">Режим тренування:</label>
+                <div class="toggle-buttons">
+                    <button type="button" class="option-btn active" id="modeWordBtn" onclick="selectGameMode('word')">📚
+                        Слова + Речення</button>
+                    <button type="button" class="option-btn" id="modeSentencesBtn"
+                        onclick="selectGameMode('sentences_only')">💬 Тільки речення</button>
+                </div>
+            </div>
+
+            <!-- Введення пробілів -->
+            <div class="settings-group">
+                <label class="setting-label">Введення пробілів:</label>
+                <div class="toggle-buttons">
+                    <button type="button" class="option-btn" id="spaceOffBtn" onclick="selectSpaceMode(false)">⚡
+                        Автопропуск</button>
+                    <button type="button" class="option-btn active" id="spaceOnBtn" onclick="selectSpaceMode(true)">␣
+                        Вручну</button>
+                </div>
+            </div>
+
+            <!-- Джерела даних -->
+            <div class="settings-group">
+                <label class="setting-label">Джерела даних:</label>
+                <div class="checkbox-group" style="display: flex; gap: 15px; justify-content: center; margin-top: 5px;">
+                    <label style="font-size: 13px; cursor: pointer; color: #334155;"><input type="checkbox"
+                            id="sourceDict" checked> Словник</label>
+                    <label style="font-size: 13px; cursor: pointer; color: #334155;"><input type="checkbox"
+                            id="sourceExpr" checked> Вирази</label>
+                    <label style="font-size: 13px; cursor: pointer; color: #334155;"><input type="checkbox"
+                            id="sourceTraining" checked> Речення</label>
+                </div>
+            </div>
+
+            <!-- Категорія / Тема -->
+            <div class="settings-group">
+                <label class="setting-label">Категорія / Тема:</label>
+                <select id="categorySelect" class="option-select">
+                    <option value="all">🌐 Усі категорії та теми</option>
+                </select>
+            </div>
+
+            <!-- Кількість елементів -->
+            <div class="settings-group">
+                <label class="setting-label">Кількість елементів у раунді:</label>
+                <div class="toggle-buttons" style="margin-bottom: 8px;">
+                    <button type="button" class="option-btn active" id="limit5Btn" onclick="selectLimit(5)">5</button>
+                    <button type="button" class="option-btn" id="limit10Btn" onclick="selectLimit(10)">10</button>
+                    <button type="button" class="option-btn" id="limitAllBtn" onclick="selectLimit('all')">Усі</button>
+                </div>
+                <input type="number" id="itemLimitInput" value="5" min="1.0" max="200"
+                    placeholder="Або введіть своє число" oninput="customLimitInputChanged()" class="option-select"
+                    style="text-align: center; font-weight: bold;">
+            </div>
+
+            <button class="start-game-btn" onclick="startGame()">Розпочати тренування 🚀</button>
+            <button class="back-home-btn" onclick="location.href='index.html'">‹ На головну</button>
+        </div>
+    </div>
+
+    <!-- ЕКРАН 2: ІГРОВИЙ ПРОЦЕС (ПРИХОВАНИЙ ДО НАТИСКАННЯ СТАРТУ) -->
+    <div id="gameScreen" class="writing-container hidden">
+        <!-- Шапка: тільки назад, акуратний прогрес-бар, раунд і рестарт -->
+        <div class="writing-header">
+            <button class="icon-btn" onclick="returnToStart()" title="Налаштування">⚙️</button>
+            <div class="progress-bar-wrap">
+                <div id="progressBar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <span id="roundIndicator">Раунд 1 із 3</span>
+            <button class="icon-btn" onclick="restartGame()" title="Перезапустити">🔄</button>
+        </div>
+
+        <!-- Основна зона гри -->
+        <div class="game-card" id="gameCard">
+            <div id="imageContainer" class="emoji-img">🧀</div>
+            <h2 id="targetWordTitle">sýr</h2>
+            <div id="wordDisplay" class="letter-slots"></div>
+        </div>
+
+        <!-- Нижня панель -->
+        <div class="writing-footer">
+            <button class="control-btn" onclick="showHint()">👁 Підказка</button>
+            <button class="control-btn" onclick="speakCurrentWord()">🔊 Послухати</button>
+        </div>
+    </div>
+
+    <!-- Модальне вікно фінішу -->
+    <div id="finishModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-icon">🎉</div>
+            <h2>Done!</h2>
+            <p>Раунд успішно завершено!</p>
+            <div id="wordsGrid" class="words-summary-grid"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="restartGame()">Try again</button>
+                <button class="modal-btn primary" onclick="returnToStart()">Налаштування</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script src="writing.js"></script>
+</body>
+
+</html>
