@@ -228,12 +228,14 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 4. Тексти
+      // 4. Тексти (texts)
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
                 data.forEach(item => {
                     const cat = item.category || 'other';
+                    
+                    // Перевірка фільтра за категорією
                     if (selectedCategory !== 'all' && cat !== selectedCategory) return;
 
                     const textCs = item.text_cs || '';
@@ -241,11 +243,11 @@ async function loadTrainingDataFromDB() {
 
                     if (textCs) {
                         combinedData.push({
-                            word: item.title || 'Текст',
+                            word: item.title || 'Текст', // Це просто назва для підсумкового вікна
                             translation: textUa,
                             emoji: '📄',
                             sentences: [{
-                                text: textCs,
+                                text: textCs,          // Чеський текст для введення
                                 translation: textUa
                             }]
                         });
@@ -381,6 +383,11 @@ function getCurrentTarget() {
     if (!item) return null;
 
     const sentences = item.sentences || [];
+
+    // Якщо це текст із таблиці texts, у нього завжди є sentences із чеським текстом
+    if (item.emoji === '📄' && sentences.length > 0) {
+        return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
+    }
 
     if (gameMode === 'sentences_only') {
         if (sentences.length > 0) {
