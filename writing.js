@@ -23,7 +23,7 @@ const finishModal = document.getElementById("finishModal");
 const wordsGrid = document.getElementById("wordsGrid");
 const categorySelect = document.getElementById("categorySelect");
 
-// --- АВТОМАТИЧНЕ ЗАВАНТАЖЕННЯ КАТЕГОРІЙ З БД ---
+// --- ДИНАМІЧНЕ ЗАВАНТАЖЕННЯ КАТЕГОРІЙ ЗАЛЕЖНО ВІД ОБРАНИХ ДЖЕРЕЛ ---
 async function initCategories() {
     let attempts = 0;
     while ((typeof db === 'undefined' || !db) && attempts < 10) {
@@ -33,36 +33,81 @@ async function initCategories() {
 
     if (typeof db === 'undefined' || !db) return;
 
+    const selectEl = document.getElementById('categorySelect');
+    if (!selectEl) return;
+
+    const useDict = document.getElementById('sourceDict')?.checked ?? true;
+    const useExpr = document.getElementById('sourceExpr')?.checked ?? true;
+    const useTraining = document.getElementById('sourceTraining')?.checked ?? true;
+    const useTexts = document.getElementById('sourceTexts')?.checked ?? true;
+
     try {
-        const categories = new Set();
+        const categoriesSet = new Set();
 
-        try {
-            const { data } = await db.from('dictionary').select('theme');
-            if (data) data.forEach(item => { if (item.theme) categories.add(item.theme); });
-        } catch (e) {}
-
-        try {
-            const { data } = await db.from('expressions').select('theme');
-            if (data) data.forEach(item => { if (item.theme) categories.add(item.theme); });
-        } catch (e) {}
-
-        try {
-            const { data } = await db.from('training_words').select('category');
-            if (data) data.forEach(item => { if (item.category) categories.add(item.category); });
-        } catch (e) {}
-
-        if (categorySelect) {
-            categorySelect.innerHTML = `<option value="all">🌐 Усі категорії та теми</option>`;
-            categories.forEach(cat => {
-                categorySelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-            });
+        // 1. Словник
+        if (useDict) {
+            try {
+                const { data } = await db.from('dictionary').select('theme');
+                if (data) data.forEach(i => i.theme && categoriesSet.add(i.theme));
+            } catch (e) {}
         }
+
+        // 2. Вирази
+        if (useExpr) {
+            try {
+                const { data } = await db.from('expressions').select('theme');
+                if (data) data.forEach(i => i.theme && categoriesSet.add(i.theme));
+            } catch (e) {}
+        }
+
+        // 3. Речення
+        if (useTraining) {
+            try {
+                const { data } = await db.from('training_words').select('category');
+                if (data) data.forEach(i => i.category && categoriesSet.add(i.category));
+            } catch (e) {}
+        }
+
+        // 4. Тексти
+        if (useTexts) {
+            try {
+                const { data } = await db.from('texts').select('category');
+                if (data) data.forEach(i => i.category && categoriesSet.add(i.category));
+            } catch (e) {}
+        }
+
+        // Зберігаємо поточне значення, щоб воно не збивалося при оновленні списку
+        const currentValue = selectEl.value;
+
+        selectEl.innerHTML = `<option value="all">🌐 Усі категорії та теми</option>`;
+        
+        categoriesSet.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = CATEGORY_MAP[cat] || cat;
+            selectEl.appendChild(option);
+        });
+
+        // Відновлюємо вибір, якщо він ще актуальний
+        if (Array.from(selectEl.options).some(opt => opt.value === currentValue)) {
+            selectEl.value = currentValue;
+        } else {
+            selectEl.value = 'all';
+        }
+
     } catch (err) {
         console.error("Помилка завантаження категорій:", err);
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+// Слухаємо зміни чекбоксів джерел, щоб динамічно міняти список тем
+document.addEventListener('change', (e) => {
+    if (e.target && (e.target.id === 'sourceDict' || e.target.id === 'sourceExpr' || e.target.id === 'sourceTraining' || e.target.id === 'sourceTexts')) {
+        initCategories();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
     initCategories();
 });
 
@@ -98,50 +143,7 @@ const CATEGORY_MAP = {
     'article': '📑 Статті'
 };
 
-async function loadCategoriesFromDB() {
-    const selectEl = document.getElementById('categorySelect');
-    if (!selectEl) return;
 
-    try {
-        const categoriesSet = new Set();
-
-        // 1. Отримуємо категорії з dictionary
-        const { data: dictData } = await db.from('dictionary').select('theme');
-        if (dictData) dictData.forEach(i => i.theme && categoriesSet.add(i.theme));
-
-        // 2. Отримуємо категорії з expressions
-        const { data: exprData } = await db.from('expressions').select('theme');
-        if (exprData) exprData.forEach(i => i.theme && categoriesSet.add(i.theme));
-
-        // 3. Отримуємо категорії з training_words
-        const { data: trainData } = await db.from('training_words').select('category');
-        if (trainData) trainData.forEach(i => i.category && categoriesSet.add(i.category));
-
-        // 4. Отримуємо категорії з texts (нової таблиці)
-        const { data: textsData } = await db.from('texts').select('category');
-        if (textsData) textsData.forEach(i => i.category && categoriesSet.add(i.category));
-
-        // Очищаємо і додаємо стандартну опцію "Усі"
-        selectEl.innerHTML = '<option value="all">🌐 Усі категорії та теми</option>';
-
-        // Додаємо всі знайдені категорії у випадаючий список
-        categoriesSet.forEach(cat => {
-            const option = document.createElement('option');
-            option.value = cat;
-            // Якщо для категорії є гарний переклад у MAP — використовуємо його, інакше показуємо як є
-            option.textContent = CATEGORY_MAP[cat] || cat;
-            selectEl.appendChild(option);
-        });
-
-    } catch (err) {
-        console.error('Помилка завантаження категорій:', err);
-    }
-}
-
-// Викликаємо після завантаження сторінки / підключення до БД
-document.addEventListener('DOMContentLoaded', () => {
-    loadCategoriesFromDB();
-});
 // --- ЗАВАНТАЖЕННЯ ДАНИХ З БД (ПІД ВАШУ СХЕМУ) ---
 async function loadTrainingDataFromDB() {
     try {
