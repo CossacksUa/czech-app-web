@@ -294,35 +294,17 @@ function speakCurrentWord() {
     const target = getCurrentTarget();
     if (!target || !target.text) return;
 
-    // Зупиняємо попередній звук
     if (window.currentAudio) {
         window.currentAudio.pause();
         window.currentAudio.currentTime = 0;
     }
 
-    // Пробуємо відтворити через онлайн-сервіс
-    const ttsUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Zuzana&text=${encodeURIComponent(target.text)}`;
+    // Запит іде на серверний роут Vercel (/api/tts), який обходить усі блокування
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(target.text)}`;
+    
     window.currentAudio = new Audio(ttsUrl);
-
     window.currentAudio.play().catch(error => {
-        console.warn("Перемикаємось на якісний системний голос через мережевий збій:", error);
-        
-        // Якщо хмару заблоковано, використовуємо SpeechSynthesis з примусовим пошуком чеського голосу
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(target.text);
-        utterance.lang = 'cs-CZ';
-        utterance.rate = 0.85; // Робимо швидкість трохи плавжнішою для природності
-
-        // Шукаємо саме чеський голос у системі браузера
-        const voices = window.speechSynthesis.getVoices();
-        const czVoice = voices.find(v => v.lang.toLowerCase().includes('cs') || v.lang.toLowerCase().includes('cz'));
-        if (czVoice) {
-            utterance.voice = czVoice;
-        }
-
-        window.speechSynthesis.speak(utterance);
+        console.error("Помилка відтворення аудіо:", error);
     });
 }
 
