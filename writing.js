@@ -228,29 +228,36 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-      // 4. Тексти (texts)
+     // 4. Тексти (texts) - розбиваємо на окремі речення
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
                 data.forEach(item => {
                     const cat = item.category || 'other';
-                    
-                    // Перевірка фільтра за категорією
                     if (selectedCategory !== 'all' && cat !== selectedCategory) return;
 
                     const textCs = item.text_cs || '';
                     const textUa = item.text_ua || '';
 
                     if (textCs) {
-                        combinedData.push({
-                            word: item.title || 'Текст', // Це просто назва для підсумкового вікна
-                            translation: textUa,
-                            emoji: '📄',
-                            sentences: [{
-                                text: textCs,          // Чеський текст для введення
-                                translation: textUa
-                            }]
-                        });
+                        // Розбиваємо чеський текст на окремі речення за крапкою, знаком оклику чи питання
+                        // (ураховуємо пробіл після розділового знака)
+                        const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+                        
+                        // Формуємо масив об'єктів речень для тренажера
+                        const sentencesArray = rawSentences.map(sent => ({
+                            text: sent.trim(),
+                            translation: textUa // або можна залишити загальний переклад
+                        }));
+
+                        if (sentencesArray.length > 0) {
+                            combinedData.push({
+                                word: item.title || 'Текст',
+                                translation: textUa,
+                                emoji: '📄',
+                                sentences: sentencesArray // Тепер тут окремі речення!
+                            });
+                        }
                     }
                 });
             }
