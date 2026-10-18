@@ -228,7 +228,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-     // 4. Тексти (texts) - розбиваємо на окремі речення
+// 4. Тексти (texts) - додаємо кожне речення як окрему картку для тренування
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -240,24 +240,21 @@ async function loadTrainingDataFromDB() {
                     const textUa = item.text_ua || '';
 
                     if (textCs) {
-                        // Розбиваємо чеський текст на окремі речення за крапкою, знаком оклику чи питання
-                        // (ураховуємо пробіл після розділового знака)
+                        // Розбиваємо чеський текст на окремі речення
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
                         
-                        // Формуємо масив об'єктів речень для тренажера
-                        const sentencesArray = rawSentences.map(sent => ({
-                            text: sent.trim(),
-                            translation: textUa // або можна залишити загальний переклад
-                        }));
-
-                        if (sentencesArray.length > 0) {
+                        // Кожне речення робимо самостійним елементом у загальному масиві тренування
+                        rawSentences.forEach((sent, index) => {
                             combinedData.push({
-                                word: item.title || 'Текст',
+                                word: `${item.title || 'Текст'} (${index + 1}/${rawSentences.length})`,
                                 translation: textUa,
                                 emoji: '📄',
-                                sentences: sentencesArray // Тепер тут окремі речення!
+                                sentences: [{
+                                    text: sent.trim(),
+                                    translation: textUa
+                                }]
                             });
-                        }
+                        });
                     }
                 });
             }
