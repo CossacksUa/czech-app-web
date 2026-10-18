@@ -1,3 +1,109 @@
+// Словник перекладів інтерфейсу
+const translations = {
+    uk: {
+        title: "Тренажер письма",
+        subtitle: "Оберіть параметри тренування перед початком:",
+        modeLabel: "Режим тренування:",
+        modeWords: "📚 Слова + Речення",
+        modeSentences: "💬 Тільки речення",
+        spaceLabel: "Введення пробілів:",
+        spaceAuto: "⚡ Автопропуск",
+        spaceManual: "Вручну",
+        sourcesLabel: "Джерела даних:",
+        sourceDict: "Словник",
+        sourceExpr: "Вирази",
+        sourceTraining: "Речення",
+        sourceTexts: "📄 Тексти",
+        categoryLabel: "Категорія / Тема:",
+        allCategories: "🌐 Усі категорії та теми",
+        limitLabel: "Кількість елементів у раунді:",
+        limitAll: "Усі",
+        limitPlaceholder: "Або введіть своє число",
+        startBtn: "Розпочати тренування 🚀",
+        backBtn: "‹ На головну",
+        hintBtn: "👁 Підказка",
+        soundBtn: "🔊 Послухати",
+        finishTitle: "Done!",
+        finishText: "Раунд успішно завершено!",
+        tryAgain: "Try again",
+        settingsBtn: "Налаштування",
+        alertNoData: "У базі даних не знайдено записів за обраними джерелами та категорією!",
+        alertNoDb: "Помилка: відсутнє підключення до Supabase (db).",
+        translationLabel: "Переклад: "
+    },
+    ru: {
+        title: "Тренажер письма",
+        subtitle: "Выберите параметры тренировки перед началом:",
+        modeLabel: "Режим тренировки:",
+        modeWords: "📚 Слова + Предложения",
+        modeSentences: "💬 Только предложения",
+        spaceLabel: "Ввод пробелов:",
+        spaceAuto: "⚡ Автопропуск",
+        spaceManual: "Вручную",
+        sourcesLabel: "Источники данных:",
+        sourceDict: "Словарь",
+        sourceExpr: "Выражения",
+        sourceTraining: "Предложения",
+        sourceTexts: "📄 Тексты",
+        categoryLabel: "Категория / Тема:",
+        allCategories: "🌐 Все категории и темы",
+        limitLabel: "Количество элементов в раунде:",
+        limitAll: "Все",
+        limitPlaceholder: "Или введите свое число",
+        startBtn: "Начать тренировку 🚀",
+        backBtn: "‹ На главную",
+        hintBtn: "👁 Подсказка",
+        soundBtn: "🔊 Прослушать",
+        finishTitle: "Готово!",
+        finishText: "Раунд успешно завершен!",
+        tryAgain: "Повторить",
+        settingsBtn: "Настройки",
+        alertNoData: "В базе данных не найдено записей по выбранным источникам и категории!",
+        alertNoDb: "Ошибка: отсутствует подключение к Supabase (db).",
+        translationLabel: "Перевод: "
+    }
+};
+
+let currentLang = localStorage.getItem('appLang') || 'uk';
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('appLang', lang);
+
+    // Підсвічуємо активну кнопку мови
+    document.getElementById('langUkBtn')?.classList.toggle('active', lang === 'uk');
+    document.getElementById('langRuBtn')?.classList.toggle('active', lang === 'ru');
+
+    // Оновлюємо тексти на сторінці за атрибутами data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[currentLang][key]) {
+            el.textContent = translations[currentLang][key];
+        }
+    });
+
+    // Оновлюємо плейсхолдери інпутів
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
+        }
+    });
+
+    // Оновлюємо пункт "Усі категорії" у випадаючому списку
+    const categorySelect = document.getElementById('categorySelect');
+    if (categorySelect && categorySelect.options.length > 0) {
+        categorySelect.options[0].textContent = translations[currentLang].allCategories;
+    }
+}
+
+// Викликаємо встановлення мови при завантаженні сторінки
+document.addEventListener('DOMContentLoaded', () => {
+    setLanguage(currentLang);
+    initCategories();
+});
+
+
 window.trainingData = window.trainingData || [];
 
 let gameMode = 'word'; 
