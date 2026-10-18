@@ -695,7 +695,8 @@ function showFinishModal() {
 
 function showHint() {
     const target = getCurrentTarget();
-    if (target) alert(`Переклад: ${target.translation}`);
+    const label = translations[currentLang].translationLabel;
+    if (target) alert(`${label}${target.translation}`);
 }
 
 function restartGame() {
