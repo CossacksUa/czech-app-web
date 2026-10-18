@@ -39,7 +39,7 @@ const translations = {
         modeSentences: "💬 Только предложения",
         spaceLabel: "Ввод пробелов:",
         spaceAuto: "⚡ Автопропуск",
-        spaceManual: "Вручну",
+        spaceManual: "Вручную",
         sourcesLabel: "Источники данных:",
         sourceDict: "Словарь",
         sourceExpr: "Выражения",
@@ -234,6 +234,14 @@ function customLimitInputChanged() {
     }
 }
 
+// --- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ ОТРИМАННЯ ПЕРЕКЛАДУ ЗАЛЕЖНО ВІД МОВИ ---
+function getItemTranslation(item) {
+    if (window.currentLang === 'ru') {
+        return item.translationRu || item.translation || '';
+    }
+    return item.translation || item.translationRu || '';
+}
+
 // --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
@@ -256,6 +264,7 @@ async function loadTrainingDataFromDB() {
 
         let combinedData = [];
 
+        // 1. Словник (зберігаємо і UA, і RU)
         if (useDict) {
             const { data, error } = await db.from('dictionary').select('*');
             if (!error && data) {
@@ -264,12 +273,14 @@ async function loadTrainingDataFromDB() {
                     if (selectedCategory !== 'all' && theme !== selectedCategory) return;
 
                     const wordText = item.cz || item.word || '';
-                    const transText = item.ua || item.ru || item.translation || '';
+                    const transUa = item.ua || item.translation || '';
+                    const transRu = item.ru || transUa;
                     if (!wordText) return;
 
                     combinedData.push({
                         word: wordText,
-                        translation: transText,
+                        translation: transUa,
+                        translationRu: transRu,
                         emoji: item.emoji || '📚',
                         sentences: Array.isArray(item.sentences) ? item.sentences : []
                     });
@@ -277,6 +288,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
+        // 2. Вирази (зберігаємо і UA, і RU)
         if (useExpr) {
             const { data, error } = await db.from('expressions').select('*');
             if (!error && data) {
@@ -285,12 +297,14 @@ async function loadTrainingDataFromDB() {
                     if (selectedCategory !== 'all' && theme !== selectedCategory) return;
 
                     const phraseText = item.cz || item.phrase || item.word || '';
-                    const transText = item.ua || item.ru || item.translation || '';
+                    const transUa = item.ua || item.translation || '';
+                    const transRu = item.ru || transUa;
                     if (!phraseText) return;
 
                     combinedData.push({
                         word: phraseText,
-                        translation: transText,
+                        translation: transUa,
+                        translationRu: transRu,
                         emoji: item.emoji || '💬',
                         sentences: Array.isArray(item.sentences) ? item.sentences : []
                     });
@@ -298,6 +312,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
+        // 3. Речення
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
             if (!error && data) {
@@ -314,6 +329,7 @@ async function loadTrainingDataFromDB() {
                         combinedData.push({
                             word: wordVal,
                             translation: transVal,
+                            translationRu: transVal,
                             emoji: emojiVal,
                             sentences: sents
                         });
@@ -322,7 +338,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // Тексти: зберігаємо і UA, і RU переклади окремо для динамічного вибору
+        // 4. Тексти
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -332,7 +348,7 @@ async function loadTrainingDataFromDB() {
 
                     const textCs = item.text_cs || '';
                     const textUa = item.text_ua || '';
-                    const textRu = item.text_ru || item.text_ua || ''; // Фоллбек на UA якщо RU немає
+                    const textRu = item.text_ru || textUa;
 
                     if (textCs) {
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
@@ -340,8 +356,8 @@ async function loadTrainingDataFromDB() {
                         rawSentences.forEach((sent, index) => {
                             combinedData.push({
                                 word: sent.trim(),
-                                translation: textUa,       // Український переклад
-                                translationRu: textRu,     // Російський переклад
+                                translation: textUa,
+                                translationRu: textRu,
                                 emoji: '📄',
                                 sentences: []
                             });
@@ -482,10 +498,10 @@ function getCurrentTarget() {
     if (!item) return null;
 
     const sentences = item.sentences || [];
+    const trans = getItemTranslation(item);
 
-    if (item.emoji === '📄') {
-        const trans = (window.currentLang === 'ru' && item.translationRu) ? item.translationRu : item.translation;
-        return { text: item.word, translation: trans, isSentence: true };
+    if (item.emoji === '📄' || item.emoji === '💬' || item.emoji === '📚') {
+        return { text: item.word, translation: trans, isSentence: false };
     }
 
     if (gameMode === 'sentences_only') {
@@ -493,14 +509,14 @@ function getCurrentTarget() {
             const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
             return { text: sentences[idx].text, translation: sentences[idx].translation, isSentence: true };
         } else {
-            return { text: item.word, translation: item.translation, isSentence: false };
+            return { text: item.word, translation: trans, isSentence: false };
         }
     } else {
         if (currentSentenceIndex === -1) {
             if (!item.word && sentences.length > 0) {
                 return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
             }
-            return { text: item.word, translation: item.translation, isSentence: false };
+            return { text: item.word, translation: trans, isSentence: false };
         } else {
             const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
             const sentenceObj = sentences[idx];
@@ -630,7 +646,7 @@ window.addEventListener("keydown", (e) => {
                 const item = window.trainingData[currentWordIndex];
                 const sentences = item.sentences || [];
 
-                if (item.emoji === '📄' || sentences.length === 0) {
+                if (item.emoji === '📄' || item.emoji === '💬' || item.emoji === '📚' || sentences.length === 0) {
                     currentWordIndex++;
                 } else if (gameMode === 'sentences_only') {
                     currentSentenceIndex++;
@@ -686,11 +702,8 @@ function showFinishModal() {
             const div = document.createElement("div");
             div.classList.add("word-summary-item");
             
-            // Динамически выбираем перевод для сетки результатов в зависимости от языка
-            let displayTranslation = item.translation;
-            if (item.emoji === '📄' && window.currentLang === 'ru' && item.translationRu) {
-                displayTranslation = item.translationRu;
-            }
+            // Динамически берем правильный перевод для каждого источника (словарь, выражения, тексты)
+            const displayTranslation = getItemTranslation(item);
 
             div.innerHTML = `
                 <div style="font-size: 24px;">${item.emoji || '💬'}</div>
