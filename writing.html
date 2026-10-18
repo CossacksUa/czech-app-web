@@ -7,85 +7,80 @@
     <title>Тренажер сліпого вводу - Чеська мова</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="writing.css">
-
 </head>
 
 <body>
 
     <!-- ЕКРАН 1: СТАРТОВЕ МЕНЮ НАЛАШТУВАНЬ -->
-<div class="start-card" style="position: relative;">
-    <!-- Перемикач мови -->
-    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 5px;">
-        <button type="button" class="option-btn" id="langUkBtn" onclick="setLanguage('uk')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">UA</button>
-        <button type="button" class="option-btn" id="langRuBtn" onclick="setLanguage('ru')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">RU</button>
-    </div>
+    <div id="startScreen" class="start-screen-overlay">
+        <div class="start-card" style="position: relative;">
+            <!-- Перемикач мови -->
+            <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 5px;">
+                <button type="button" class="option-btn" id="langUkBtn" onclick="setLanguage('uk')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">UA</button>
+                <button type="button" class="option-btn" id="langRuBtn" onclick="setLanguage('ru')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">RU</button>
+            </div>
 
-    <div class="-icon">⌨️</div>
-            <h1>Тренажер письма</h1>
-            <p>Оберіть параметри тренування перед початком:</p>
+            <div class="start-icon">⌨️</div>
+            <h1 data-i18n="title">Тренажер письма</h1>
+            <p data-i18n="subtitle">Оберіть параметри тренування перед початком:</p>
 
             <!-- Режим гри -->
             <div class="settings-group">
-                <label class="setting-label">Режим тренування:</label>
+                <label class="setting-label" data-i18n="modeLabel">Режим тренування:</label>
                 <div class="toggle-buttons">
-                    <button type="button" class="option-btn active" id="modeWordBtn" onclick="selectGameMode('word')">📚
-                        Слова + Речення</button>
-                    <button type="button" class="option-btn" id="modeSentencesBtn"
-                        onclick="selectGameMode('sentences_only')">💬 Тільки речення</button>
+                    <button type="button" class="option-btn active" id="modeWordBtn" onclick="selectGameMode('word')" data-i18n="modeWords">📚 Слова + Речення</button>
+                    <button type="button" class="option-btn" id="modeSentencesBtn" onclick="selectGameMode('sentences_only')" data-i18n="modeSentences">💬 Тільки речення</button>
                 </div>
             </div>
 
             <!-- Введення пробілів -->
             <div class="settings-group">
-                <label class="setting-label">Введення пробілів:</label>
+                <label class="setting-label" data-i18n="spaceLabel">Введення пробілів:</label>
                 <div class="toggle-buttons">
-                    <button type="button" class="option-btn" id="spaceOffBtn" onclick="selectSpaceMode(false)">⚡
-                        Автопропуск</button>
-                    <button type="button" class="option-btn active" id="spaceOnBtn" onclick="selectSpaceMode(true)">
-                        Вручну</button>
+                    <button type="button" class="option-btn" id="spaceOffBtn" onclick="selectSpaceMode(false)" data-i18n="spaceAuto">⚡ Автопропуск</button>
+                    <button type="button" class="option-btn active" id="spaceOnBtn" onclick="selectSpaceMode(true)" data-i18n="spaceManual">Вручну</button>
                 </div>
             </div>
 
             <!-- Джерела даних -->
             <div class="settings-group">
-                <label class="setting-label">Джерела даних:</label>
-<div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;" id="sourcesCheckboxes">
-    <label><input type="checkbox" id="sourceDict" checked> Словник</label>
-    <label><input type="checkbox" id="sourceExpr" checked> Вирази</label>
-    <label><input type="checkbox" id="sourceTraining" checked> Речення</label>
-    <label><input type="checkbox" id="sourceTexts" checked> Тексти</label>
-</div>
+                <label class="setting-label" data-i18n="sourcesLabel">Джерела даних:</label>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;" id="sourcesCheckboxes">
+                    <label><input type="checkbox" id="sourceDict" checked> <span data-i18n="sourceDict">Словник</span></label>
+                    <label><input type="checkbox" id="sourceExpr" checked> <span data-i18n="sourceExpr">Вирази</span></label>
+                    <label><input type="checkbox" id="sourceTraining" checked> <span data-i18n="sourceTraining">Речення</span></label>
+                    <label><input type="checkbox" id="sourceTexts" checked> <span data-i18n="sourceTexts">Тексти</span></label>
+                </div>
             </div>
 
-<!-- Категорія / Тема -->
-<div class="settings-group">
-    <label class="setting-label">Категорія / Тема:</label>
-    <select id="categorySelect" class="option-select">
-        <option value="all">🌐 Усі категорії та теми</option>
-    </select>
-</div>
+            <!-- Категорія / Тема -->
+            <div class="settings-group">
+                <label class="setting-label" data-i18n="categoryLabel">Категорія / Тема:</label>
+                <select id="categorySelect" class="option-select">
+                    <option value="all" data-i18n="allCategories">🌐 Усі категорії та теми</option>
+                </select>
+            </div>
 
             <!-- Кількість елементів -->
             <div class="settings-group">
-                <label class="setting-label">Кількість елементів у раунді:</label>
+                <label class="setting-label" data-i18n="limitLabel">Кількість елементів у раунді:</label>
                 <div class="toggle-buttons" style="margin-bottom: 8px;">
                     <button type="button" class="option-btn active" id="limit5Btn" onclick="selectLimit(5)">5</button>
                     <button type="button" class="option-btn" id="limit10Btn" onclick="selectLimit(10)">10</button>
-                    <button type="button" class="option-btn" id="limitAllBtn" onclick="selectLimit('all')">Усі</button>
+                    <button type="button" class="option-btn" id="limitAllBtn" onclick="selectLimit('all')" data-i18n="limitAll">Усі</button>
                 </div>
                 <input type="number" id="itemLimitInput" value="5" min="1.0" max="200"
-                    placeholder="Або введіть своє число" oninput="customLimitInputChanged()" class="option-select"
+                    placeholder="Або введіть своє число" data-i18n-placeholder="limitPlaceholder" oninput="customLimitInputChanged()" class="option-select"
                     style="text-align: center; font-weight: bold;">
             </div>
 
-            <button class="start-game-btn" onclick="startGame()">Розпочати тренування 🚀</button>
-            <button class="back-home-btn" onclick="location.href='index.html'">‹ На головну</button>
+            <button class="start-game-btn" onclick="startGame()" data-i18n="startBtn">Розпочати тренування 🚀</button>
+            <button class="back-home-btn" onclick="location.href='index.html'" data-i18n="backBtn">‹ На головну</button>
         </div>
     </div>
 
-    <!-- ЕКРАН 2: ІГРОВИЙ ПРОЦЕС (ПРИХОВАНИЙ ДО НАТИСКАННЯ СТАРТУ) -->
+    <!-- ЕКРАН 2: ІГРОВИЙ ПРОЦЕС -->
     <div id="gameScreen" class="writing-container hidden">
-        <!-- Шапка: тільки назад, акуратний прогрес-бар, раунд і рестарт -->
         <div class="writing-header">
             <button class="icon-btn" onclick="returnToStart()" title="Налаштування">⚙️</button>
             <div class="progress-bar-wrap">
@@ -95,17 +90,15 @@
             <button class="icon-btn" onclick="restartGame()" title="Перезапустити">🔄</button>
         </div>
 
-        <!-- Основна зона гри -->
         <div class="game-card" id="gameCard">
             <div id="imageContainer" class="emoji-img">🧀</div>
             <h2 id="targetWordTitle">sýr</h2>
             <div id="wordDisplay" class="letter-slots"></div>
         </div>
 
-        <!-- Нижня панель -->
         <div class="writing-footer">
-            <button class="control-btn" onclick="showHint()">👁 Підказка</button>
-            <button class="control-btn" onclick="speakCurrentWord()">🔊 Послухати</button>
+            <button class="control-btn" onclick="showHint()" data-i18n="hintBtn">👁 Підказка</button>
+            <button class="control-btn" onclick="speakCurrentWord()" data-i18n="soundBtn">🔊 Послухати</button>
         </div>
     </div>
 
@@ -113,12 +106,12 @@
     <div id="finishModal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-icon">🎉</div>
-            <h2>Done!</h2>
-            <p>Раунд успішно завершено!</p>
+            <h2 data-i18n="finishTitle">Done!</h2>
+            <p data-i18n="finishText">Раунд успішно завершено!</p>
             <div id="wordsGrid" class="words-summary-grid"></div>
             <div class="modal-buttons">
-                <button class="modal-btn secondary" onclick="restartGame()">Try again</button>
-                <button class="modal-btn primary" onclick="returnToStart()">Налаштування</button>
+                <button class="modal-btn secondary" onclick="restartGame()" data-i18n="tryAgain">Try again</button>
+                <button class="modal-btn primary" onclick="returnToStart()" data-i18n="settingsBtn">Налаштування</button>
             </div>
         </div>
     </div>
