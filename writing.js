@@ -64,11 +64,14 @@ const translations = {
     }
 };
 
-let currentLang = localStorage.getItem('appLang') || 'uk';
+// Защита от повторного объявления (исключает ошибку SyntaxError)
+if (typeof window.currentLang === 'undefined') {
+    window.currentLang = localStorage.getItem('appLang') || 'uk';
+}
 
 // Глобальна функція для перемикання мови
 window.setLanguage = function(lang) {
-    currentLang = lang;
+    window.currentLang = lang;
     localStorage.setItem('appLang', lang);
 
     document.getElementById('langUkBtn')?.classList.toggle('active', lang === 'uk');
@@ -76,21 +79,21 @@ window.setLanguage = function(lang) {
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (translations[currentLang][key]) {
-            el.textContent = translations[currentLang][key];
+        if (translations[window.currentLang][key]) {
+            el.textContent = translations[window.currentLang][key];
         }
     });
 
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[currentLang][key]) {
-            el.placeholder = translations[currentLang][key];
+        if (translations[window.currentLang][key]) {
+            el.placeholder = translations[window.currentLang][key];
         }
     });
 
     const categorySelect = document.getElementById('categorySelect');
     if (categorySelect && categorySelect.options.length > 0) {
-        categorySelect.options[0].textContent = translations[currentLang].allCategories;
+        categorySelect.options[0].textContent = translations[window.currentLang].allCategories;
     }
 };
 
@@ -177,7 +180,7 @@ async function initCategories() {
 
         const currentValue = selectEl.value;
 
-        selectEl.innerHTML = `<option value="all">${translations[currentLang].allCategories}</option>`;
+        selectEl.innerHTML = `<option value="all">${translations[window.currentLang].allCategories}</option>`;
         
         categoriesSet.forEach(cat => {
             const option = document.createElement('option');
@@ -204,7 +207,7 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.setLanguage(currentLang);
+    window.setLanguage(window.currentLang);
     initCategories();
 });
 
@@ -235,7 +238,7 @@ function customLimitInputChanged() {
 async function loadTrainingDataFromDB() {
     try {
         if (typeof db === 'undefined' || !db) {
-            alert(translations[currentLang].alertNoDb);
+            alert(translations[window.currentLang].alertNoDb);
             return false;
         }
 
@@ -357,7 +360,7 @@ async function loadTrainingDataFromDB() {
             }
             return true;
         } else {
-            alert(translations[currentLang].alertNoData);
+            alert(translations[window.currentLang].alertNoData);
             return false;
         }
     } catch (err) {
@@ -668,7 +671,7 @@ function showFinishModal() {
                 <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${item.word || 'Фраза'}</div>
                 <div style="color: #64748b; font-size: 11px;">${item.translation}</div>
             `;
-            wordsGrid.wordsGrid.appendChild(div); // Wait, fix this line just in case: wordsGrid.appendChild(div)
+            wordsGrid.appendChild(div);
         });
     }
     if (finishModal) finishModal.classList.remove("hidden");
@@ -676,7 +679,7 @@ function showFinishModal() {
 
 function showHint() {
     const target = getCurrentTarget();
-    const label = translations[currentLang].translationLabel;
+    const label = translations[window.currentLang].translationLabel;
     if (target) alert(`${label}${target.translation}`);
 }
 
