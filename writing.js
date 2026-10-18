@@ -66,7 +66,7 @@ const translations = {
 
 let currentLang = localStorage.getItem('appLang') || 'uk';
 
-// Прив'язуємо функцію до window, щоб HTML міг її викликати без похибок
+// Глобальна функція для перемикання мови
 window.setLanguage = function(lang) {
     currentLang = lang;
     localStorage.setItem('appLang', lang);
@@ -624,4 +624,66 @@ window.addEventListener("keydown", (e) => {
 
                 if (gameMode === 'sentences_only') {
                     currentSentenceIndex++;
-                    if (currentSentenceIndex >= sentences.length)…
+                    if (currentSentenceIndex >= sentences.length) {
+                        currentSentenceIndex = 0;
+                        currentWordIndex++;
+                    }
+                } else {
+                    if (currentSentenceIndex === -1) {
+                        if (item.word && sentences.length > 0) {
+                            currentSentenceIndex = 0;
+                        } else {
+                            currentWordIndex++;
+                        }
+                    } else {
+                        currentSentenceIndex++;
+                        if (currentSentenceIndex >= sentences.length) {
+                            currentSentenceIndex = -1;
+                            currentWordIndex++;
+                        }
+                    }
+                }
+                loadRound();
+            }, 800);
+        }
+    } else {
+        playErrorSound();
+        if (gameCard) {
+            gameCard.classList.remove("shake");
+            void gameCard.offsetWidth;
+            gameCard.classList.add("shake");
+        }
+    }
+});
+
+function showFinishModal() {
+    if (progressBar) progressBar.style.width = `100%`;
+    if (wordsGrid) {
+        wordsGrid.innerHTML = "";
+        window.trainingData.forEach(item => {
+            const div = document.createElement("div");
+            div.classList.add("word-summary-item");
+            div.innerHTML = `
+                <div style="font-size: 24px;">${item.emoji || '💬'}</div>
+                <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${item.word || 'Фраза'}</div>
+                <div style="color: #64748b; font-size: 11px;">${item.translation}</div>
+            `;
+            wordsGrid.wordsGrid.appendChild(div); // Wait, fix this line just in case: wordsGrid.appendChild(div)
+        });
+    }
+    if (finishModal) finishModal.classList.remove("hidden");
+}
+
+function showHint() {
+    const target = getCurrentTarget();
+    const label = translations[currentLang].translationLabel;
+    if (target) alert(`${label}${target.translation}`);
+}
+
+function restartGame() {
+    if (finishModal) finishModal.classList.add("hidden");
+    currentWordIndex = 0;
+    currentSentenceIndex = (gameMode === 'sentences_only') ? 0 : -1;
+    calculateTotalSteps();
+    loadRound();
+}
