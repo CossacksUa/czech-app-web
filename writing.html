@@ -13,9 +13,14 @@
 <body>
 
     <!-- ЕКРАН 1: СТАРТОВЕ МЕНЮ НАЛАШТУВАНЬ -->
-    <div id="startScreen" class="start-screen-overlay">
-        <div class="start-card">
-            <div class="start-icon">⌨️</div>
+<div class="start-card" style="position: relative;">
+    <!-- Перемикач мови -->
+    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 5px;">
+        <button type="button" class="option-btn" id="langUkBtn" onclick="setLanguage('uk')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">UA</button>
+        <button type="button" class="option-btn" id="langRuBtn" onclick="setLanguage('ru')" style="padding: 4px 10px; font-size: 12px; min-width: auto;">RU</button>
+    </div>
+
+    <div class="-icon">⌨️</div>
             <h1>Тренажер письма</h1>
             <p>Оберіть параметри тренування перед початком:</p>
 
@@ -48,7 +53,7 @@
     <label><input type="checkbox" id="sourceDict" checked> Словник</label>
     <label><input type="checkbox" id="sourceExpr" checked> Вирази</label>
     <label><input type="checkbox" id="sourceTraining" checked> Речення</label>
-    <label><input type="checkbox" id="sourceTexts" checked> 📄 Тексти</label>
+    <label><input type="checkbox" id="sourceTexts" checked> Тексти</label>
 </div>
             </div>
 
