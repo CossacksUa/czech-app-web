@@ -64,7 +64,7 @@ const translations = {
     }
 };
 
-// Защита от повторного объявления
+// Захист від повторного оголошення
 if (typeof window.currentLang === 'undefined') {
     window.currentLang = localStorage.getItem('appLang') || 'uk';
 }
@@ -241,6 +241,14 @@ function getItemTranslation(item) {
     return item.translation || item.translationRu || '';
 }
 
+function getSentenceTranslation(sentenceObj) {
+    if (!sentenceObj) return '';
+    if (window.currentLang === 'ru') {
+        return sentenceObj.translation_ru || sentenceObj.translation || '';
+    }
+    return sentenceObj.translation || sentenceObj.translation_ru || '';
+}
+
 // --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
@@ -311,7 +319,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 3. Речення (training_words) - РАСПАКОВЫВАЕМ Каждое речение как отдельный элемент
+        // 3. Речення (training_words) із підтримкою режимів
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
             if (!error && data) {
@@ -324,29 +332,31 @@ async function loadTrainingDataFromDB() {
                     const emojiVal = item.emoji || '💬';
                     const sents = Array.isArray(item.sentences) ? item.sentences : [];
 
-                    // Если режим "Слова + Речения" — добавляем само слово
-                    if (gameMode === 'word' && wordVal) {
-                        combinedData.push({
-                            word: wordVal,
-                            translation: transVal,
-                            translationRu: transVal,
-                            emoji: emojiVal,
-                            sentences: []
+                    if (gameMode === 'sentences_only') {
+                        // Режим "Тільки речення": кожне речення стає окремою карткою
+                        sents.forEach(s => {
+                            if (s.text) {
+                                combinedData.push({
+                                    word: s.text,
+                                    translation: s.translation || transVal,
+                                    translationRu: s.translation_ru || s.translation || transVal,
+                                    emoji: emojiVal,
+                                    sentences: []
+                                });
+                            }
                         });
-                    }
-
-                    // Каждое предложение из массива добавляем отдельно!
-                    sents.forEach(s => {
-                        if (s.text) {
+                    } else {
+                        // Режим "Слова + Речення": зберігаємо структуру з вкладеними реченнями
+                        if (wordVal || sents.length > 0) {
                             combinedData.push({
-                                word: s.text,
-                                translation: s.translation || transVal,
-                                translationRu: s.translation_ru || s.translation || transVal,
-                                emoji: '💬',
-                                sentences: []
+                                word: wordVal,
+                                translation: transVal,
+                                translationRu: transVal,
+                                emoji: emojiVal,
+                                sentences: sents
                             });
                         }
-                    });
+                    }
                 });
             }
         }
@@ -407,7 +417,19 @@ function shuffleArray(array) {
 }
 
 function calculateTotalSteps() {
-    totalSteps = window.trainingData.length;
+    totalSteps = 0;
+    window.trainingData.forEach(item => {
+        if (item.emoji === '📄' || !item.sentences || item.sentences.length === 0) {
+            totalSteps += 1;
+        } else {
+            if (gameMode === 'word' && item.word) {
+                totalSteps += 1; 
+            }
+            if (item.sentences && Array.isArray(item.sentences)) {
+                totalSteps += item.sentences.length;
+            }
+        }
+    });
     currentStep = 0;
 }
 
@@ -494,12 +516,33 @@ function speakCurrentWord() {
     });
 }
 
+// Поточна мета (слово або речення залежно від шагу та режиму)
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
     if (!item) return null;
 
+    const sentences = item.sentences || [];
     const itemTrans = getItemTranslation(item);
-    return { text: item.word, translation: itemTrans, isSentence: item.word.length > 15 };
+
+    if (item.emoji === '📄' || sentences.length === 0) {
+        return { text: item.word, translation: itemTrans, isSentence: item.word.length > 15 };
+    }
+
+    if (gameMode === 'sentences_only') {
+        return { text: item.word, translation: itemTrans, isSentence: true };
+    } else {
+        if (currentSentenceIndex === -1) {
+            return { text: item.word, translation: itemTrans, isSentence: false };
+        } else {
+            const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
+            const sentenceObj = sentences[idx];
+            return { 
+                text: sentenceObj.text, 
+                translation: getSentenceTranslation(sentenceObj) || itemTrans, 
+                isSentence: true 
+            };
+        }
+    }
 }
 
 let currentCharIndex = 0;
@@ -524,13 +567,17 @@ function loadRound() {
 
     targetWordTitle.textContent = target.text;
     const item = window.trainingData[currentWordIndex];
-    emojiContainer.textContent = item.emoji || "💬";
+    emojiContainer.textContent = target.isSentence ? "💬" : (item.emoji || "📚");
     
     currentCharIndex = 0;
     renderSlots(target.text);
     
     if (roundIndicator) {
-        roundIndicator.textContent = `Елемент ${currentWordIndex + 1} із ${window.trainingData.length}`;
+        if (target.isSentence && currentSentenceIndex !== -1 && item.word) {
+            roundIndicator.textContent = `Речення для: ${item.word}`;
+        } else {
+            roundIndicator.textContent = `Елемент ${currentWordIndex + 1} із ${window.trainingData.length}`;
+        }
     }
 
     const progressPercent = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
@@ -618,7 +665,23 @@ window.addEventListener("keydown", (e) => {
             currentStep++;
 
             setTimeout(() => {
-                currentWordIndex++;
+                const item = window.trainingData[currentWordIndex];
+                const sentences = item.sentences || [];
+
+                if (gameMode === 'word' && sentences.length > 0) {
+                    if (currentSentenceIndex === -1) {
+                        currentSentenceIndex = 0; // Переходимо до першого речення цього слова
+                    } else {
+                        currentSentenceIndex++;
+                        if (currentSentenceIndex >= sentences.length) {
+                            currentSentenceIndex = -1;
+                            currentWordIndex++; // Переходимо до наступного слова
+                        }
+                    }
+                } else {
+                    currentWordIndex++;
+                }
+
                 loadRound();
             }, 800);
         }
@@ -650,18 +713,33 @@ function showFinishModal() {
     if (wordsGrid) {
         wordsGrid.innerHTML = "";
         window.trainingData.forEach(item => {
-            const div = document.createElement("div");
-            div.classList.add("word-summary-item");
-            
             const displayWord = item.word || 'Фраза';
             const displayTranslation = getItemTranslation(item);
 
+            const div = document.createElement("div");
+            div.classList.add("word-summary-item");
             div.innerHTML = `
                 <div style="font-size: 24px;">${item.emoji || '💬'}</div>
                 <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${displayWord}</div>
                 <div style="color: #64748b; font-size: 11px;">${displayTranslation}</div>
             `;
             wordsGrid.appendChild(div);
+
+            // Якщо у режимі "Слова + Речення" є вкладені речення, виводимо і їх у підсумкову сітку
+            if (gameMode === 'word' && item.sentences && item.sentences.length > 0) {
+                item.sentences.forEach(sObj => {
+                    const sWord = sObj.text;
+                    const sTrans = getSentenceTranslation(sObj);
+                    const sDiv = document.createElement("div");
+                    sDiv.classList.add("word-summary-item");
+                    sDiv.innerHTML = `
+                        <div style="font-size: 24px;">💬</div>
+                        <div style="color: #0284c7; font-weight: bold; font-size: 14px;">${sWord}</div>
+                        <div style="color: #64748b; font-size: 11px;">${sTrans}</div>
+                    `;
+                    wordsGrid.appendChild(sDiv);
+                });
+            }
         });
     }
     if (finishModal) finishModal.classList.remove("hidden");
