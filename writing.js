@@ -64,7 +64,7 @@ const translations = {
     }
 };
 
-// Захист від повторного оголошення
+// Защита от повторного объявления
 if (typeof window.currentLang === 'undefined') {
     window.currentLang = localStorage.getItem('appLang') || 'uk';
 }
@@ -241,14 +241,6 @@ function getItemTranslation(item) {
     return item.translation || item.translationRu || '';
 }
 
-function getSentenceTranslation(sentenceObj) {
-    if (!sentenceObj) return '';
-    if (window.currentLang === 'ru') {
-        return sentenceObj.translation_ru || sentenceObj.translation || '';
-    }
-    return sentenceObj.translation || sentenceObj.translation_ru || '';
-}
-
 // --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
@@ -289,7 +281,7 @@ async function loadTrainingDataFromDB() {
                         translation: transUa,
                         translationRu: transRu,
                         emoji: item.emoji || '📚',
-                        sentences: Array.isArray(item.sentences) ? item.sentences : []
+                        sentences: []
                     });
                 });
             }
@@ -313,13 +305,13 @@ async function loadTrainingDataFromDB() {
                         translation: transUa,
                         translationRu: transRu,
                         emoji: item.emoji || '💬',
-                        sentences: Array.isArray(item.sentences) ? item.sentences : []
+                        sentences: []
                     });
                 });
             }
         }
 
-        // 3. Речення (training_words)
+        // 3. Речення (training_words) - РАСПАКОВЫВАЕМ Каждое речение как отдельный элемент
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
             if (!error && data) {
@@ -332,15 +324,29 @@ async function loadTrainingDataFromDB() {
                     const emojiVal = item.emoji || '💬';
                     const sents = Array.isArray(item.sentences) ? item.sentences : [];
 
-                    if (wordVal || sents.length > 0) {
+                    // Если режим "Слова + Речения" — добавляем само слово
+                    if (gameMode === 'word' && wordVal) {
                         combinedData.push({
                             word: wordVal,
                             translation: transVal,
                             translationRu: transVal,
                             emoji: emojiVal,
-                            sentences: sents
+                            sentences: []
                         });
                     }
+
+                    // Каждое предложение из массива добавляем отдельно!
+                    sents.forEach(s => {
+                        if (s.text) {
+                            combinedData.push({
+                                word: s.text,
+                                translation: s.translation || transVal,
+                                translationRu: s.translation_ru || s.translation || transVal,
+                                emoji: '💬',
+                                sentences: []
+                            });
+                        }
+                    });
                 });
             }
         }
@@ -360,7 +366,7 @@ async function loadTrainingDataFromDB() {
                     if (textCs) {
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
                         
-                        rawSentences.forEach((sent, index) => {
+                        rawSentences.forEach((sent) => {
                             combinedData.push({
                                 word: sent.trim(),
                                 translation: textUa,
@@ -401,19 +407,7 @@ function shuffleArray(array) {
 }
 
 function calculateTotalSteps() {
-    totalSteps = 0;
-    window.trainingData.forEach(item => {
-        if (item.emoji === '📄' || !item.sentences || item.sentences.length === 0) {
-            totalSteps += 1;
-        } else {
-            if (gameMode === 'word' && item.word) {
-                totalSteps += 1; 
-            }
-            if (item.sentences && Array.isArray(item.sentences)) {
-                totalSteps += item.sentences.length;
-            }
-        }
-    });
+    totalSteps = window.trainingData.length;
     currentStep = 0;
 }
 
@@ -500,51 +494,12 @@ function speakCurrentWord() {
     });
 }
 
-// Отримання поточного слова/речення з ДІЙСНИМ перекладом
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
     if (!item) return null;
 
-    const sentences = item.sentences || [];
     const itemTrans = getItemTranslation(item);
-
-    if (item.emoji === '📄') {
-        return { text: item.word, translation: itemTrans, isSentence: true };
-    }
-
-    if (gameMode === 'sentences_only') {
-        if (sentences.length > 0) {
-            const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
-            const sentenceObj = sentences[idx];
-            return { 
-                text: sentenceObj.text, 
-                translation: getSentenceTranslation(sentenceObj) || itemTrans, 
-                isSentence: true 
-            };
-        } else {
-            return { text: item.word, translation: itemTrans, isSentence: false };
-        }
-    } else {
-        if (currentSentenceIndex === -1) {
-            if (!item.word && sentences.length > 0) {
-                const sentenceObj = sentences[0];
-                return { 
-                    text: sentenceObj.text, 
-                    translation: getSentenceTranslation(sentenceObj) || itemTrans, 
-                    isSentence: true 
-                };
-            }
-            return { text: item.word, translation: itemTrans, isSentence: false };
-        } else {
-            const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
-            const sentenceObj = sentences[idx];
-            return { 
-                text: sentenceObj.text, 
-                translation: getSentenceTranslation(sentenceObj) || itemTrans, 
-                isSentence: true 
-            };
-        }
-    }
+    return { text: item.word, translation: itemTrans, isSentence: item.word.length > 15 };
 }
 
 let currentCharIndex = 0;
@@ -569,15 +524,13 @@ function loadRound() {
 
     targetWordTitle.textContent = target.text;
     const item = window.trainingData[currentWordIndex];
-    emojiContainer.textContent = target.isSentence ? "💬" : (item.emoji || "📚");
+    emojiContainer.textContent = item.emoji || "💬";
     
     currentCharIndex = 0;
     renderSlots(target.text);
     
     if (roundIndicator) {
-        roundIndicator.textContent = target.isSentence 
-            ? `Речення (${item.word || 'фраза'})` 
-            : `Слово ${currentWordIndex + 1} із ${window.trainingData.length}`;
+        roundIndicator.textContent = `Елемент ${currentWordIndex + 1} із ${window.trainingData.length}`;
     }
 
     const progressPercent = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
@@ -665,32 +618,7 @@ window.addEventListener("keydown", (e) => {
             currentStep++;
 
             setTimeout(() => {
-                const item = window.trainingData[currentWordIndex];
-                const sentences = item.sentences || [];
-
-                if (item.emoji === '📄' || sentences.length === 0) {
-                    currentWordIndex++;
-                } else if (gameMode === 'sentences_only') {
-                    currentSentenceIndex++;
-                    if (currentSentenceIndex >= sentences.length) {
-                        currentSentenceIndex = 0;
-                        currentWordIndex++;
-                    }
-                } else {
-                    if (currentSentenceIndex === -1) {
-                        if (item.word && sentences.length > 0) {
-                            currentSentenceIndex = 0;
-                        } else {
-                            currentWordIndex++;
-                        }
-                    } else {
-                        currentSentenceIndex++;
-                        if (currentSentenceIndex >= sentences.length) {
-                            currentSentenceIndex = -1;
-                            currentWordIndex++;
-                        }
-                    }
-                }
+                currentWordIndex++;
                 loadRound();
             }, 800);
         }
@@ -725,15 +653,8 @@ function showFinishModal() {
             const div = document.createElement("div");
             div.classList.add("word-summary-item");
             
-            let displayWord = item.word || 'Фраза';
-            let displayTranslation = getItemTranslation(item);
-
-            // Якщо режим ТІЛЬКИ РЕЧЕННЯ і були збережені речення - виводимо перше речення замість слова
-            if (item.sentences && item.sentences.length > 0 && gameMode === 'sentences_only') {
-                const sObj = item.sentences[0];
-                displayWord = sObj.text;
-                displayTranslation = getSentenceTranslation(sObj) || displayTranslation;
-            }
+            const displayWord = item.word || 'Фраза';
+            const displayTranslation = getItemTranslation(item);
 
             div.innerHTML = `
                 <div style="font-size: 24px;">${item.emoji || '💬'}</div>
@@ -755,7 +676,7 @@ function showHint() {
 function restartGame() {
     if (finishModal) finishModal.classList.add("hidden");
     currentWordIndex = 0;
-    currentSentenceIndex = (gameMode === 'sentences_only') ? 0 : -1;
+    currentSentenceIndex = -1;
     calculateTotalSteps();
     loadRound();
 }
