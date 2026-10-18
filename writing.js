@@ -64,7 +64,7 @@ const translations = {
     }
 };
 
-// Защита от повторного объявления (исключает ошибку SyntaxError)
+// Защита от повторного объявления
 if (typeof window.currentLang === 'undefined') {
     window.currentLang = localStorage.getItem('appLang') || 'uk';
 }
@@ -322,6 +322,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
+        // Тексти: каждое предложение добавляется как самостоятельный элемент с пустим массивом sentences
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -337,13 +338,10 @@ async function loadTrainingDataFromDB() {
                         
                         rawSentences.forEach((sent, index) => {
                             combinedData.push({
-                                word: `${item.title || 'Текст'} (${index + 1}/${rawSentences.length})`,
+                                word: sent.trim(),
                                 translation: textUa,
                                 emoji: '📄',
-                                sentences: [{
-                                    text: sent.trim(),
-                                    translation: textUa
-                                }]
+                                sentences: []
                             });
                         });
                     }
@@ -380,11 +378,15 @@ function shuffleArray(array) {
 function calculateTotalSteps() {
     totalSteps = 0;
     window.trainingData.forEach(item => {
-        if (gameMode === 'word' && item.word) {
-            totalSteps += 1; 
-        }
-        if (item.sentences && Array.isArray(item.sentences)) {
-            totalSteps += item.sentences.length;
+        if (item.emoji === '📄' || !item.sentences || item.sentences.length === 0) {
+            totalSteps += 1;
+        } else {
+            if (gameMode === 'word' && item.word) {
+                totalSteps += 1; 
+            }
+            if (item.sentences && Array.isArray(item.sentences)) {
+                totalSteps += item.sentences.length;
+            }
         }
     });
     currentStep = 0;
@@ -479,8 +481,8 @@ function getCurrentTarget() {
 
     const sentences = item.sentences || [];
 
-    if (item.emoji === '📄' && sentences.length > 0) {
-        return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
+    if (item.emoji === '📄') {
+        return { text: item.word, translation: item.translation, isSentence: true };
     }
 
     if (gameMode === 'sentences_only') {
@@ -625,7 +627,9 @@ window.addEventListener("keydown", (e) => {
                 const item = window.trainingData[currentWordIndex];
                 const sentences = item.sentences || [];
 
-                if (gameMode === 'sentences_only') {
+                if (item.emoji === '📄' || sentences.length === 0) {
+                    currentWordIndex++;
+                } else if (gameMode === 'sentences_only') {
                     currentSentenceIndex++;
                     if (currentSentenceIndex >= sentences.length) {
                         currentSentenceIndex = 0;
@@ -661,6 +665,19 @@ window.addEventListener("keydown", (e) => {
 
 function showFinishModal() {
     if (progressBar) progressBar.style.width = `100%`;
+    
+    // Динамически обновляем текст в финишной модалке под выбранный язык
+    const t = translations[window.currentLang] || translations['uk'];
+    const titleEl = finishModal.querySelector('h2');
+    const textEl = finishModal.querySelector('p');
+    const tryAgainBtn = finishModal.querySelector('.modal-btn.secondary');
+    const settingsBtn = finishModal.querySelector('.modal-btn.primary');
+
+    if (titleEl) titleEl.textContent = t.finishTitle;
+    if (textEl) textEl.textContent = t.finishText;
+    if (tryAgainBtn) tryAgainBtn.textContent = t.tryAgain;
+    if (settingsBtn) settingsBtn.textContent = t.settingsBtn;
+
     if (wordsGrid) {
         wordsGrid.innerHTML = "";
         window.trainingData.forEach(item => {
