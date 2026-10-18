@@ -500,7 +500,7 @@ function speakCurrentWord() {
     });
 }
 
-// Отримання поточного слова/речення з ДІЙСНИМ перекладом речення
+// Отримання поточного слова/речення з ДІЙСНИМ перекладом
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
     if (!item) return null;
@@ -704,6 +704,7 @@ window.addEventListener("keydown", (e) => {
     }
 });
 
+// МОДАЛЬНЕ ВІКНО ЗАКІНЧЕННЯ РАУНДУ
 function showFinishModal() {
     if (progressBar) progressBar.style.width = `100%`;
     
@@ -724,13 +725,14 @@ function showFinishModal() {
             const div = document.createElement("div");
             div.classList.add("word-summary-item");
             
-            // Якщо для картки були створені речення, беремо їхній переклад
             let displayWord = item.word || 'Фраза';
             let displayTranslation = getItemTranslation(item);
 
+            // Якщо режим ТІЛЬКИ РЕЧЕННЯ і були збережені речення - виводимо перше речення замість слова
             if (item.sentences && item.sentences.length > 0 && gameMode === 'sentences_only') {
-                displayWord = item.sentences[0].text;
-                displayTranslation = getSentenceTranslation(item.sentences[0]) || displayTranslation;
+                const sObj = item.sentences[0];
+                displayWord = sObj.text;
+                displayTranslation = getSentenceTranslation(sObj) || displayTranslation;
             }
 
             div.innerHTML = `
