@@ -64,7 +64,7 @@ const translations = {
     }
 };
 
-// Защита от повторного объявления
+// Захист від повторного оголошення
 if (typeof window.currentLang === 'undefined') {
     window.currentLang = localStorage.getItem('appLang') || 'uk';
 }
@@ -234,12 +234,19 @@ function customLimitInputChanged() {
     }
 }
 
-// --- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ ОТРИМАННЯ ПЕРЕКЛАДУ ЗАЛЕЖНО ВІД МОВИ ---
 function getItemTranslation(item) {
     if (window.currentLang === 'ru') {
         return item.translationRu || item.translation || '';
     }
     return item.translation || item.translationRu || '';
+}
+
+function getSentenceTranslation(sentenceObj) {
+    if (!sentenceObj) return '';
+    if (window.currentLang === 'ru') {
+        return sentenceObj.translation_ru || sentenceObj.translation || '';
+    }
+    return sentenceObj.translation || sentenceObj.translation_ru || '';
 }
 
 // --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
@@ -264,7 +271,7 @@ async function loadTrainingDataFromDB() {
 
         let combinedData = [];
 
-        // 1. Словник (зберігаємо і UA, і RU)
+        // 1. Словник
         if (useDict) {
             const { data, error } = await db.from('dictionary').select('*');
             if (!error && data) {
@@ -288,7 +295,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 2. Вирази (зберігаємо і UA, і RU)
+        // 2. Вирази
         if (useExpr) {
             const { data, error } = await db.from('expressions').select('*');
             if (!error && data) {
@@ -312,7 +319,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 3. Речення
+        // 3. Речення (training_words)
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
             if (!error && data) {
@@ -493,34 +500,49 @@ function speakCurrentWord() {
     });
 }
 
+// Отримання поточного слова/речення з ДІЙСНИМ перекладом речення
 function getCurrentTarget() {
     const item = window.trainingData[currentWordIndex];
     if (!item) return null;
 
     const sentences = item.sentences || [];
-    const trans = getItemTranslation(item);
+    const itemTrans = getItemTranslation(item);
 
-    if (item.emoji === '📄' || item.emoji === '💬' || item.emoji === '📚') {
-        return { text: item.word, translation: trans, isSentence: false };
+    if (item.emoji === '📄') {
+        return { text: item.word, translation: itemTrans, isSentence: true };
     }
 
     if (gameMode === 'sentences_only') {
         if (sentences.length > 0) {
             const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
-            return { text: sentences[idx].text, translation: sentences[idx].translation, isSentence: true };
+            const sentenceObj = sentences[idx];
+            return { 
+                text: sentenceObj.text, 
+                translation: getSentenceTranslation(sentenceObj) || itemTrans, 
+                isSentence: true 
+            };
         } else {
-            return { text: item.word, translation: trans, isSentence: false };
+            return { text: item.word, translation: itemTrans, isSentence: false };
         }
     } else {
         if (currentSentenceIndex === -1) {
             if (!item.word && sentences.length > 0) {
-                return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
+                const sentenceObj = sentences[0];
+                return { 
+                    text: sentenceObj.text, 
+                    translation: getSentenceTranslation(sentenceObj) || itemTrans, 
+                    isSentence: true 
+                };
             }
-            return { text: item.word, translation: trans, isSentence: false };
+            return { text: item.word, translation: itemTrans, isSentence: false };
         } else {
             const idx = Math.min(Math.max(0, currentSentenceIndex), sentences.length - 1);
             const sentenceObj = sentences[idx];
-            return { text: sentenceObj.text, translation: sentenceObj.translation, isSentence: true };
+            return { 
+                text: sentenceObj.text, 
+                translation: getSentenceTranslation(sentenceObj) || itemTrans, 
+                isSentence: true 
+            };
         }
     }
 }
@@ -646,7 +668,7 @@ window.addEventListener("keydown", (e) => {
                 const item = window.trainingData[currentWordIndex];
                 const sentences = item.sentences || [];
 
-                if (item.emoji === '📄' || item.emoji === '💬' || item.emoji === '📚' || sentences.length === 0) {
+                if (item.emoji === '📄' || sentences.length === 0) {
                     currentWordIndex++;
                 } else if (gameMode === 'sentences_only') {
                     currentSentenceIndex++;
@@ -702,12 +724,18 @@ function showFinishModal() {
             const div = document.createElement("div");
             div.classList.add("word-summary-item");
             
-            // Динамически берем правильный перевод для каждого источника (словарь, выражения, тексты)
-            const displayTranslation = getItemTranslation(item);
+            // Якщо для картки були створені речення, беремо їхній переклад
+            let displayWord = item.word || 'Фраза';
+            let displayTranslation = getItemTranslation(item);
+
+            if (item.sentences && item.sentences.length > 0 && gameMode === 'sentences_only') {
+                displayWord = item.sentences[0].text;
+                displayTranslation = getSentenceTranslation(item.sentences[0]) || displayTranslation;
+            }
 
             div.innerHTML = `
                 <div style="font-size: 24px;">${item.emoji || '💬'}</div>
-                <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${item.word || 'Фраза'}</div>
+                <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${displayWord}</div>
                 <div style="color: #64748b; font-size: 11px;">${displayTranslation}</div>
             `;
             wordsGrid.appendChild(div);
