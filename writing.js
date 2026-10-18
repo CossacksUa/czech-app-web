@@ -378,7 +378,7 @@ function speakCurrentWord() {
     const ttsUrl = `/api/tts?text=${encodeURIComponent(target.text)}`;
     window.currentAudio = new Audio(ttsUrl);
     window.currentAudio.play().catch(error => {
-        console.error("Помилка відтворення аудіо:", error);
+        console.warn("Аудіопроксі недоступний або сталася помилка сервера TTS:", error);
     });
 }
 
@@ -388,7 +388,7 @@ function getCurrentTarget() {
 
     const sentences = item.sentences || [];
 
-    // Якщо це текст із таблиці texts, у нього завжди є sentences із чеським текстом
+    // Якщо це картка з таблиці texts (розбите речення)
     if (item.emoji === '📄' && sentences.length > 0) {
         return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
     }
