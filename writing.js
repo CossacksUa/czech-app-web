@@ -322,7 +322,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // Тексти: каждое предложение добавляется как самостоятельный элемент с пустим массивом sentences
+// 4. Тексти (texts) - адаптовано під вибір мови (UA / RU)
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -331,7 +331,8 @@ async function loadTrainingDataFromDB() {
                     if (selectedCategory !== 'all' && cat !== selectedCategory) return;
 
                     const textCs = item.text_cs || '';
-                    const textUa = item.text_ua || '';
+                    // Вибираємо переклад залежно від поточної мови (якщо RU немає, падаємо на UA)
+                    const textTrans = (window.currentLang === 'ru' ? (item.text_ru || item.text_ua) : item.text_ua) || '';
 
                     if (textCs) {
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
@@ -339,7 +340,7 @@ async function loadTrainingDataFromDB() {
                         rawSentences.forEach((sent, index) => {
                             combinedData.push({
                                 word: sent.trim(),
-                                translation: textUa,
+                                translation: textTrans,
                                 emoji: '📄',
                                 sentences: []
                             });
