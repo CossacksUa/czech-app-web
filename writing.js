@@ -66,7 +66,7 @@ const translations = {
 
 let currentLang = localStorage.getItem('appLang') || 'uk';
 
-// Робимо функцію глобальною, щоб HTML міг її викликати безпосередньо
+// Прив'язуємо функцію до window, щоб HTML міг її викликати без похибок
 window.setLanguage = function(lang) {
     currentLang = lang;
     localStorage.setItem('appLang', lang);
@@ -126,6 +126,7 @@ const CATEGORY_MAP = {
     'article': '📑 Статті'
 };
 
+// --- ДИНАМІЧНЕ ЗАВАНТАЖЕННЯ КАТЕГОРІЙ ---
 async function initCategories() {
     let attempts = 0;
     while ((typeof db === 'undefined' || !db) && attempts < 10) {
@@ -230,6 +231,7 @@ function customLimitInputChanged() {
     }
 }
 
+// --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
         if (typeof db === 'undefined' || !db) {
@@ -622,66 +624,4 @@ window.addEventListener("keydown", (e) => {
 
                 if (gameMode === 'sentences_only') {
                     currentSentenceIndex++;
-                    if (currentSentenceIndex >= sentences.length) {
-                        currentSentenceIndex = 0;
-                        currentWordIndex++;
-                    }
-                } else {
-                    if (currentSentenceIndex === -1) {
-                        if (item.word && sentences.length > 0) {
-                            currentSentenceIndex = 0;
-                        } else {
-                            currentWordIndex++;
-                        }
-                    } else {
-                        currentSentenceIndex++;
-                        if (currentSentenceIndex >= sentences.length) {
-                            currentSentenceIndex = -1;
-                            currentWordIndex++;
-                        }
-                    }
-                }
-                loadRound();
-            }, 800);
-        }
-    } else {
-        playErrorSound();
-        if (gameCard) {
-            gameCard.classList.remove("shake");
-            void gameCard.offsetWidth;
-            gameCard.classList.add("shake");
-        }
-    }
-});
-
-function showFinishModal() {
-    if (progressBar) progressBar.style.width = `100%`;
-    if (wordsGrid) {
-        wordsGrid.innerHTML = "";
-        window.trainingData.forEach(item => {
-            const div = document.createElement("div");
-            div.classList.add("word-summary-item");
-            div.innerHTML = `
-                <div style="font-size: 24px;">${item.emoji || '💬'}</div>
-                <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${item.word || 'Фраза'}</div>
-                <div style="color: #64748b; font-size: 11px;">${item.translation}</div>
-            `;
-            wordsGrid.appendChild(div);
-        });
-    }
-    if (finishModal) finishModal.classList.remove("hidden");
-}
-
-function showHint() {
-    const target = getCurrentTarget();
-    const label = translations[currentLang].translationLabel;
-    if (target) alert(`${label}${target.translation}`);
-}
-
-function restartGame() {
-    if (finishModal) finishModal.classList.add("hidden");
-    currentWordIndex = 0;
-    currentSentenceIndex = (gameMode === 'sentences_only') ? 0 : -1;
-    calculateTotalSteps();
-    loadRound();
-}
+                    if (currentSentenceIndex >= sentences.length)…
