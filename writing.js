@@ -66,15 +66,14 @@ const translations = {
 
 let currentLang = localStorage.getItem('appLang') || 'uk';
 
-function setLanguage(lang) {
+// Робимо функцію глобальною, щоб HTML міг її викликати безпосередньо
+window.setLanguage = function(lang) {
     currentLang = lang;
     localStorage.setItem('appLang', lang);
 
-    // Підсвічуємо активну кнопку мови
     document.getElementById('langUkBtn')?.classList.toggle('active', lang === 'uk');
     document.getElementById('langRuBtn')?.classList.toggle('active', lang === 'ru');
 
-    // Оновлюємо тексти на сторінці за атрибутами data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
@@ -82,7 +81,6 @@ function setLanguage(lang) {
         }
     });
 
-    // Оновлюємо плейсхолдери інпутів
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[currentLang][key]) {
@@ -90,19 +88,11 @@ function setLanguage(lang) {
         }
     });
 
-    // Оновлюємо пункт "Усі категорії" у випадаючому списку
     const categorySelect = document.getElementById('categorySelect');
     if (categorySelect && categorySelect.options.length > 0) {
         categorySelect.options[0].textContent = translations[currentLang].allCategories;
     }
-}
-
-// Викликаємо встановлення мови при завантаженні сторінки
-document.addEventListener('DOMContentLoaded', () => {
-    setLanguage(currentLang);
-    initCategories();
-});
-
+};
 
 window.trainingData = window.trainingData || [];
 
@@ -129,7 +119,6 @@ const finishModal = document.getElementById("finishModal");
 const wordsGrid = document.getElementById("wordsGrid");
 const categorySelect = document.getElementById("categorySelect");
 
-// Словник для гарного відображення категорій
 const CATEGORY_MAP = {
     'news': '📰 Новини',
     'tongue_twister': '👅 Скоромовки',
@@ -137,7 +126,6 @@ const CATEGORY_MAP = {
     'article': '📑 Статті'
 };
 
-// --- ДИНАМІЧНЕ ЗАВАНТАЖЕННЯ КАТЕГОРІЙ ЗАЛЕЖНО ВІД ОБРАНИХ ДЖЕРЕЛ ---
 async function initCategories() {
     let attempts = 0;
     while ((typeof db === 'undefined' || !db) && attempts < 10) {
@@ -188,7 +176,7 @@ async function initCategories() {
 
         const currentValue = selectEl.value;
 
-        selectEl.innerHTML = `<option value="all">🌐 Усі категорії та теми</option>`;
+        selectEl.innerHTML = `<option value="all">${translations[currentLang].allCategories}</option>`;
         
         categoriesSet.forEach(cat => {
             const option = document.createElement('option');
@@ -208,7 +196,6 @@ async function initCategories() {
     }
 }
 
-// Слухаємо зміну чекбоксів джерел
 document.addEventListener('change', (e) => {
     if (e.target && ['sourceDict', 'sourceExpr', 'sourceTraining', 'sourceTexts'].includes(e.target.id)) {
         initCategories();
@@ -216,10 +203,10 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    window.setLanguage(currentLang);
     initCategories();
 });
 
-// --- ВИБІР КІЛЬКОСТІ ---
 function selectLimit(limit) {
     itemLimit = limit;
     document.getElementById("limit5Btn")?.classList.toggle("active", limit === 5);
@@ -243,18 +230,17 @@ function customLimitInputChanged() {
     }
 }
 
-// --- ЗАВАНТАЖЕННЯ ДАНИХ З БД ---
 async function loadTrainingDataFromDB() {
     try {
         if (typeof db === 'undefined' || !db) {
-            alert('Помилка: відсутнє підключення до Supabase (db).');
+            alert(translations[currentLang].alertNoDb);
             return false;
         }
 
         const useDict = document.getElementById('sourceDict')?.checked ?? true;
         const useExpr = document.getElementById('sourceExpr')?.checked ?? true;
         const useTraining = document.getElementById('sourceTraining')?.checked ?? true;
-        const useTexts = document.getElementById('sourceTexts')?.checked ?? true; // Обов'язково додано!
+        const useTexts = document.getElementById('sourceTexts')?.checked ?? true;
         const selectedCategory = document.getElementById('categorySelect')?.value ?? 'all';
         
         const inputField = document.getElementById('itemLimitInput');
@@ -265,7 +251,6 @@ async function loadTrainingDataFromDB() {
 
         let combinedData = [];
 
-        // 1. Словник
         if (useDict) {
             const { data, error } = await db.from('dictionary').select('*');
             if (!error && data) {
@@ -287,7 +272,6 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 2. Вирази
         if (useExpr) {
             const { data, error } = await db.from('expressions').select('*');
             if (!error && data) {
@@ -309,7 +293,6 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-        // 3. Речення
         if (useTraining) {
             const { data, error } = await db.from('training_words').select('*');
             if (!error && data) {
@@ -334,7 +317,6 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-// 4. Тексти (texts) - додаємо кожне речення як окрему картку для тренування
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -346,10 +328,8 @@ async function loadTrainingDataFromDB() {
                     const textUa = item.text_ua || '';
 
                     if (textCs) {
-                        // Розбиваємо чеський текст на окремі речення
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
                         
-                        // Кожне речення робимо самостійним елементом у загальному масиві тренування
                         rawSentences.forEach((sent, index) => {
                             combinedData.push({
                                 word: `${item.title || 'Текст'} (${index + 1}/${rawSentences.length})`,
@@ -375,7 +355,7 @@ async function loadTrainingDataFromDB() {
             }
             return true;
         } else {
-            alert('У базі даних не знайдено записів за обраними джерелами та категорією!');
+            alert(translations[currentLang].alertNoData);
             return false;
         }
     } catch (err) {
@@ -484,7 +464,7 @@ function speakCurrentWord() {
     const ttsUrl = `/api/tts?text=${encodeURIComponent(target.text)}`;
     window.currentAudio = new Audio(ttsUrl);
     window.currentAudio.play().catch(error => {
-        console.warn("Аудіопроксі недоступний або сталася помилка сервера TTS:", error);
+        console.warn("Аудіопроксі недоступний:", error);
     });
 }
 
@@ -494,7 +474,6 @@ function getCurrentTarget() {
 
     const sentences = item.sentences || [];
 
-    // Якщо це картка з таблиці texts (розбите речення)
     if (item.emoji === '📄' && sentences.length > 0) {
         return { text: sentences[0].text, translation: sentences[0].translation, isSentence: true };
     }
