@@ -39,7 +39,7 @@ const translations = {
         modeSentences: "💬 Только предложения",
         spaceLabel: "Ввод пробелов:",
         spaceAuto: "⚡ Автопропуск",
-        spaceManual: "Вручную",
+        spaceManual: "Вручну",
         sourcesLabel: "Источники данных:",
         sourceDict: "Словарь",
         sourceExpr: "Выражения",
@@ -322,7 +322,7 @@ async function loadTrainingDataFromDB() {
             }
         }
 
-// 4. Тексти (texts) - адаптовано під вибір мови (UA / RU)
+        // Тексти: зберігаємо і UA, і RU переклади окремо для динамічного вибору
         if (useTexts) {
             const { data, error } = await db.from('texts').select('*');
             if (!error && data) {
@@ -331,8 +331,8 @@ async function loadTrainingDataFromDB() {
                     if (selectedCategory !== 'all' && cat !== selectedCategory) return;
 
                     const textCs = item.text_cs || '';
-                    // Вибираємо переклад залежно від поточної мови (якщо RU немає, падаємо на UA)
-                    const textTrans = (window.currentLang === 'ru' ? (item.text_ru || item.text_ua) : item.text_ua) || '';
+                    const textUa = item.text_ua || '';
+                    const textRu = item.text_ru || item.text_ua || ''; // Фоллбек на UA якщо RU немає
 
                     if (textCs) {
                         const rawSentences = textCs.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
@@ -340,7 +340,8 @@ async function loadTrainingDataFromDB() {
                         rawSentences.forEach((sent, index) => {
                             combinedData.push({
                                 word: sent.trim(),
-                                translation: textTrans,
+                                translation: textUa,       // Український переклад
+                                translationRu: textRu,     // Російський переклад
                                 emoji: '📄',
                                 sentences: []
                             });
@@ -483,7 +484,8 @@ function getCurrentTarget() {
     const sentences = item.sentences || [];
 
     if (item.emoji === '📄') {
-        return { text: item.word, translation: item.translation, isSentence: true };
+        const trans = (window.currentLang === 'ru' && item.translationRu) ? item.translationRu : item.translation;
+        return { text: item.word, translation: trans, isSentence: true };
     }
 
     if (gameMode === 'sentences_only') {
@@ -667,7 +669,6 @@ window.addEventListener("keydown", (e) => {
 function showFinishModal() {
     if (progressBar) progressBar.style.width = `100%`;
     
-    // Динамически обновляем текст в финишной модалке под выбранный язык
     const t = translations[window.currentLang] || translations['uk'];
     const titleEl = finishModal.querySelector('h2');
     const textEl = finishModal.querySelector('p');
@@ -684,10 +685,17 @@ function showFinishModal() {
         window.trainingData.forEach(item => {
             const div = document.createElement("div");
             div.classList.add("word-summary-item");
+            
+            // Динамически выбираем перевод для сетки результатов в зависимости от языка
+            let displayTranslation = item.translation;
+            if (item.emoji === '📄' && window.currentLang === 'ru' && item.translationRu) {
+                displayTranslation = item.translationRu;
+            }
+
             div.innerHTML = `
                 <div style="font-size: 24px;">${item.emoji || '💬'}</div>
                 <div style="color: #0284c7; font-weight: bold; font-size: 15px;">${item.word || 'Фраза'}</div>
-                <div style="color: #64748b; font-size: 11px;">${item.translation}</div>
+                <div style="color: #64748b; font-size: 11px;">${displayTranslation}</div>
             `;
             wordsGrid.appendChild(div);
         });
