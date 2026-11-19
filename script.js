@@ -18,7 +18,8 @@ const i18n = {
         msg_auth_req: "Увійдіть в акаунт!", msg_del_confirm: "Видалити?", msg_import_err: "Помилка файлу!", msg_saved: "Збережено!",
         err_fill_all: "Заповніть всі поля!", err_user_not_found: "Користувача не знайдено!", err_wrong_pass: "Неправильний пароль!", err_user_exists: "Такий логін вже існує!",
         all_themes: "Усі теми", hist_empty: "Історія порожня", act_add: "додав(ла)", act_edit: "відредагував(ла)", act_del: "видалив(ла)",
-        locked: "Запечатано (Тільки для читання)", msg_locked: "Цей запис запечатаний адміністратором!"
+        locked: "Запечатано (Тільки для читання)", msg_locked: "Цей запис запечатаний адміністратором!",
+        alert_no_elements: "У цій темі немає записів!", alert_train_done: "Тренування завершено! 🎉"
     },
     ru: {
         app_title: "Чешский язык", nav_rules: "Правила", nav_words: "Словарь", nav_expr: "Фразы", nav_stickers: "📌 Стикеры", nav_history: "📜 История", nav_data: "⚙️ Данные", nav_profile: "👤 Профиль",
@@ -39,7 +40,8 @@ const i18n = {
         msg_auth_req: "Войдите в аккаунт!", msg_del_confirm: "Удалить?", msg_import_err: "Ошибка файла!", msg_saved: "Сохранено!",
         err_fill_all: "Заполните все поля!", err_user_not_found: "Пользователь не найден!", err_wrong_pass: "Неверный пароль!", err_user_exists: "Такой логин уже существует!",
         all_themes: "Все темы", hist_empty: "История пуста", act_add: "добавил(а)", act_edit: "отредактировал(а)", act_del: "удалил(а)",
-        locked: "Запечатано (Только для чтения)", msg_locked: "Эта запись запечатана администратором!"
+        locked: "Запечатано (Только для чтения)", msg_locked: "Эта запись запечатана администратором!",
+        alert_no_elements: "В этой теме нет записей!", alert_train_done: "Тренировка завершена! 🎉"
     }
 };
 
@@ -372,6 +374,7 @@ function updateThemeLists() {
     if (wFilter) {
         wFilter.innerHTML = `<option value="all">${t('all_themes')}</option>` + Array.from(wordThemes).map(t => `<option value="${t}">${t}</option>`).join('');
         wFilter.value = cwf || 'all';
+        if (!wFilter.value) wFilter.value = 'all';
     }
 
     let eFilter = document.getElementById('exprFilterTheme');
@@ -379,6 +382,7 @@ function updateThemeLists() {
     if (eFilter) {
         eFilter.innerHTML = `<option value="all">${t('all_themes')}</option>` + Array.from(exprThemes).map(t => `<option value="${t}">${t}</option>`).join('');
         eFilter.value = cef || 'all';
+        if (!eFilter.value) eFilter.value = 'all';
     }
 
     // Збір та вивід категорій для правил
@@ -394,6 +398,7 @@ function updateThemeLists() {
         ruleFilter.innerHTML = `<option value="all">${currentLang === 'ua' ? 'Усі категорії' : 'Все категории'}</option>` +
             Array.from(ruleCategories).map(c => `<option value="${c}">${c}</option>`).join('');
         ruleFilter.value = currentSelection || 'all';
+        if (!ruleFilter.value) ruleFilter.value = 'all';
     }
 
     let ruleCatList = document.getElementById('ruleCategoryList');
@@ -615,6 +620,7 @@ function setLang(lang, isInit = false) {
     }
 
     checkAuth();
+    if (!isInit) { updateThemeLists(); renderRules(); renderWords(); renderExpressions(); renderHistory(); }
 }
 
 function switchTab(tabId) { 
