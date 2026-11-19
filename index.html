@@ -96,10 +96,10 @@
 
                     <h2 style="margin-top: 2rem;" data-i18n="your_dict">Ваш словник</h2>
                     <div class="filter-row">
-                        <input type="text" id="searchRule" data-i18n="search_rules_ph" placeholder="🔍 Швидкий пошук..."
-                            oninput="renderRules()">
-                        <select id="ruleFilterCategory" onchange="renderRules()">
-                            <option value="all">Усі категорії</option>
+                        <input type="text" id="searchWord" data-i18n="search_words_ph" placeholder="🔍 Пошук слів..."
+                            oninput="renderWords()">
+                        <select id="wordFilterTheme" onchange="renderWords()">
+                            <option value="all">Усі теми</option>
                         </select>
                     </div>
                     <div id="wordsList" class="card"></div>
@@ -143,9 +143,9 @@
 
                     <h2 style="margin-top: 2rem;" data-i18n="your_expr">Ваші вирази</h2>
                     <div class="filter-row">
-                        <input type="text" id="searchWord" data-i18n="search_words_ph" placeholder="🔍 Пошук слів..."
-                            oninput="renderWords()">
-                        <select id="wordFilterTheme" onchange="renderWords()">
+                        <input type="text" id="searchExpr" data-i18n="search_expr_ph" placeholder="🔍 Пошук виразів..."
+                            oninput="renderExpressions()">
+                        <select id="exprFilterTheme" onchange="renderExpressions()">
                             <option value="all">Усі теми</option>
                         </select>
                     </div>
