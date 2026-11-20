@@ -1,6 +1,6 @@
 const i18n = {
     ua: {
-        app_title: "Чеська мова", nav_rules: "Правила", nav_words: "Словник", nav_expr: "Вирази", nav_stickers: "📌 Стікери", nav_history: "📜 Історія", nav_data: "⚙️ Дані", nav_profile: "👤 Профіль",
+        app_title: "Чеська мова", nav_rules: "Правила", nav_words: "Словник", nav_expr: "Вирази", nav_cards: "🃏 Картки", nav_stickers: "📌 Стікери", nav_history: "📜 Історія", nav_data: "⚙️ Дані", nav_profile: "👤 Профіль",
         online_now: "Онлайн:", rules_title: "Граматика та Правила", btn_add_rule: "+ Додати правило", search_rules_ph: "🔍 Пошук по правилах...",
         word_train_title: "Тренажер слів", choose_theme: "Оберіть тему:", btn_start_word: "Почати тренування слів", translate_target: "Перекладіть: ...", btn_reset_letters: "Скинути", btn_finish: "Завершити",
         your_dict: "Ваш словник", search_words_ph: "🔍 Пошук слів...", add_new_word: "Слово (Додати/Редагувати)", ph_word_cz: "Слово чеською", ph_word_ua: "Переклад (Укр)", ph_word_ru: "Переклад (Рус)", ph_theme_word: "Тема", btn_save: "Зберегти",
@@ -22,7 +22,7 @@ const i18n = {
         alert_no_elements: "У цій темі немає записів!", alert_train_done: "Тренування завершено! 🎉"
     },
     ru: {
-        app_title: "Чешский язык", nav_rules: "Правила", nav_words: "Словарь", nav_expr: "Фразы", nav_stickers: "📌 Стикеры", nav_history: "📜 История", nav_data: "⚙️ Данные", nav_profile: "👤 Профиль",
+        app_title: "Чешский язык", nav_rules: "Правила", nav_words: "Словарь", nav_expr: "Фразы", nav_cards: "🃏 Карточки", nav_stickers: "📌 Стикеры", nav_history: "📜 История", nav_data: "⚙️ Данные", nav_profile: "👤 Профиль",
         online_now: "Онлайн:", rules_title: "Грамматика и Правила", btn_add_rule: "+ Добавить правило", search_rules_ph: "🔍 Поиск по правилам...",
         word_train_title: "Тренажер слов", choose_theme: "Выберите тему:", btn_start_word: "Начать тренировку слов", translate_target: "Переведите: ...", btn_reset_letters: "Сбросить", btn_finish: "Завершить",
         your_dict: "Ваш словарь", search_words_ph: "🔍 Поиск слов...", add_new_word: "Слово (Добавить/Редактировать)", ph_word_cz: "Слово чешским", ph_word_ua: "Перевод (Укр)", ph_word_ru: "Перевод (Рус)", ph_theme_word: "Тема", btn_save: "Сохранить",
@@ -61,12 +61,37 @@ let stickers = [];
 let historyLogs = [];
 
 let ruleEditor;
-let currentUser = JSON.parse(localStorage.getItem('czUser')) || null;
+let currentUser = null;
+
+// ---------- БЕЗПЕКА: хелпери ----------
+function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function cleanHtml(html) {
+    if (window.DOMPurify) return DOMPurify.sanitize(html || '');
+    return esc(html || '');
+}
+function loginToEmail(login) {
+    const l = login.trim().toLowerCase();
+    return l.includes('@') ? l : l + '@czech-app.local';
+}
+async function loadProfile(authUser) {
+    if (!authUser) { currentUser = null; return; }
+    const { data } = await db.from('users').select('id, username, role, tg_id, reminder_time').eq('auth_id', authUser.id).maybeSingle();
+    currentUser = data || null;
+}
+async function initSession() {
+    try {
+        const { data } = await db.auth.getSession();
+        await loadProfile(data && data.session ? data.session.user : null);
+    } catch (e) { console.error('Помилка сесії:', e); currentUser = null; }
+    localStorage.removeItem('czUser'); // старий небезпечний кеш
+}
 
 async function loadCloudData() {
     try {
         const [u, r, d, e, s, h] = await Promise.all([
-            db.from('users').select('*'),
+            db.from('users').select('id, username, role, tg_id'),
             db.from('rules').select('*').order('id', { ascending: false }),
             db.from('dictionary').select('*').order('id', { ascending: false }),
             db.from('expressions').select('*').order('id', { ascending: false }),
@@ -87,19 +112,21 @@ async function loadCloudData() {
 
         updateThemeLists();
         renderRules(); renderWords(); renderExpressions(); renderStickers(); renderUsersTable(); renderHistory();
+        if (typeof cardsRefresh === 'function') cardsRefresh();
     } catch (error) {
         console.error("Помилка завантаження з бази:", error);
     }
 }
 
-window.onload = () => {
+window.onload = async () => {
     const langSelectEl = document.getElementById('langSelect');
     if (langSelectEl) langSelectEl.value = currentLang;
 
     setLang(currentLang, true);
+    await initSession();
     checkAuth();
     loadCloudData();
-    trackRealOnlineUsers(); // Змінено: тепер запускаємо реальний трекер
+    trackRealOnlineUsers();
 };
 
 function checkAuth() {
@@ -143,43 +170,44 @@ function toggleAuthView(view) {
 
 async function loginUser() {
     const un = document.getElementById('loginUsername').value.trim();
-    const pass = document.getElementById('loginPassword').value.trim();
+    const pass = document.getElementById('loginPassword').value;
     if (!un || !pass) return alert(t('err_fill_all'));
 
-    let { data: users } = await db.from('users').select('*').eq('username', un);
-    let u = users && users.length > 0 ? users[0] : null;
+    const { data, error } = await db.auth.signInWithPassword({ email: loginToEmail(un), password: pass });
+    if (error) return alert(t('err_wrong_pass'));
 
-    if (!u) return alert(t('err_user_not_found'));
-    if (u.password !== pass) return alert(t('err_wrong_pass'));
-
-    currentUser = u; localStorage.setItem('czUser', JSON.stringify(currentUser));
+    await loadProfile(data.user);
+    if (!currentUser) { await db.auth.signOut(); return alert(t('err_user_not_found')); }
     checkAuth();
+    await loadCloudData();
 }
 
 async function registerUser() {
     const un = document.getElementById('regUsername').value.trim();
-    const pass = document.getElementById('regPassword').value.trim();
+    const pass = document.getElementById('regPassword').value;
     if (!un || !pass) return alert(t('err_fill_all'));
+    if (!un.includes('@')) return alert(currentLang === 'ua' ? 'Введіть справжню електронну пошту як логін!' : 'Введите настоящую электронную почту как логин!');
+    if (pass.length < 6) return alert(currentLang === 'ua' ? 'Пароль має бути не коротший за 6 символів!' : 'Пароль должен быть не короче 6 символов!');
 
-    let { data: exists } = await db.from('users').select('id').eq('username', un);
-    if (exists && exists.length > 0) return alert(t('err_user_exists'));
+    const { data, error } = await db.auth.signUp({ email: un.toLowerCase(), password: pass, options: { data: { username: un.toLowerCase() } } });
+    if (error) return alert(/registered|exists|database error/i.test(error.message) ? t('err_user_exists') : error.message);
 
-    let newUser = { username: un, password: pass, role: (un.toLowerCase() === 'admin' ? 'admin' : 'user'), tg_id: '' };
-    let { data } = await db.from('users').insert([newUser]).select();
-
-    currentUser = data[0]; localStorage.setItem('czUser', JSON.stringify(currentUser));
+    if (!data.session) return alert(currentLang === 'ua' ? 'Перевірте пошту та підтвердьте реєстрацію.' : 'Проверьте почту и подтвердите регистрацию.');
+    await loadProfile(data.user);
     checkAuth(); alert(t('msg_saved'));
+    await loadCloudData();
 }
 
-function fakeLogout() { currentUser = null; localStorage.removeItem('czUser'); checkAuth(); switchTab('profile'); }
+async function fakeLogout() { await db.auth.signOut(); currentUser = null; checkAuth(); switchTab('profile'); await loadCloudData(); }
 
 async function saveTgId() {
-    if (currentUser) {
-        currentUser.tg_id = document.getElementById('tgIdInput').value;
-        await db.from('users').update({ tg_id: currentUser.tg_id }).eq('id', currentUser.id);
-        localStorage.setItem('czUser', JSON.stringify(currentUser));
-        alert(t('msg_saved'));
-    }
+    if (!currentUser) return;
+    const val = document.getElementById('tgIdInput').value.trim();
+    if (val && !/^-?\d+$/.test(val)) return alert(currentLang === 'ua' ? 'Telegram ID — це лише цифри (отримайте його у бота кнопкою «Мій ID»).' : 'Telegram ID — это только цифры (получите его у бота кнопкой «Мой ID»).');
+    const { error } = await db.from('users').update({ tg_id: val }).eq('id', currentUser.id);
+    if (error) return alert(error.message);
+    currentUser.tg_id = val;
+    alert(t('msg_saved'));
 }
 
 function renderUsersTable() {
@@ -190,11 +218,11 @@ function renderUsersTable() {
             <option value="user" ${u.role === 'user' ? 'selected' : ''}>Учень</option>
             <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Адмін</option>
         </select>`;
-        tbody.innerHTML += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px;"><b>${u.username}</b> ${isMe ? '(Ви)' : ''}</td><td style="padding: 10px;">${u.tg_id || '-'}</td><td style="padding: 10px;">${roleSelect}</td></tr>`;
+        tbody.innerHTML += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px;"><b>${esc(u.username)}</b> ${isMe ? '(Ви)' : ''}</td><td style="padding: 10px;">${esc(u.tg_id) || '-'}</td><td style="padding: 10px;">${roleSelect}</td></tr>`;
     });
 }
 
-async function changeUserRole(id, newRole) { await db.from('users').update({ role: newRole }).eq('id', id); await loadCloudData(); }
+async function changeUserRole(id, newRole) { const { error } = await db.rpc('set_user_role', { p_id: id, p_role: newRole }); if (error) alert(error.message); await loadCloudData(); }
 
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
 function canEdit(item) { return currentUser && (isAdmin() || !item.locked); }
@@ -205,7 +233,7 @@ async function toggleLock(type, index) {
     let table = type === 'rule' ? 'rules' : (type === 'word' ? 'dictionary' : 'expressions');
     let arr = type === 'rule' ? rules : (type === 'word' ? dictionary : expressions);
     let item = arr[index];
-    await db.from(table).update({ locked: !item.locked }).eq('id', item.id);
+    await db.rpc('set_locked', { p_table: table, p_id: item.id, p_locked: !item.locked });
     await loadCloudData();
 }
 
@@ -219,7 +247,8 @@ async function toggleLike(type, index) {
     let lIdx = likes.indexOf(currentUser.username);
     if (lIdx > -1) likes.splice(lIdx, 1); else likes.push(currentUser.username);
 
-    await db.from(table).update({ likes: likes }).eq('id', item.id);
+    const { error: likeErr } = await db.rpc('toggle_like', { p_table: table, p_id: item.id });
+    if (likeErr) alert(likeErr.message);
     await loadCloudData();
 }
 
@@ -235,7 +264,8 @@ function renderHistory() {
     if (!list) return; // Захист для сторінки тренажера
     list.innerHTML = '';
     if (historyLogs.length === 0) { list.innerHTML = `<div style="text-align:center; color:#94a3b8;">${t('hist_empty')}</div>`; return; }
-    historyLogs.forEach(log => {
+    historyLogs.forEach(rawLog => {
+        const log = { ...rawLog, user_name: esc(rawLog.user_name), entity_name: esc(rawLog.entity_name), extra_info: esc(rawLog.extra_info) };
         const d = new Date(log.time); const timeStr = d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         let actionWord = t(log.action) || log.action;
         let actionColor = log.action === 'act_del' ? '#ef4444' : (log.action === 'act_edit' ? '#eab308' : '#16a34a');
@@ -252,7 +282,8 @@ function showItemHistory(type, name) {
     const filteredLogs = historyLogs.filter(l => l.entity_type === type && l.entity_name === name);
     if (filteredLogs.length === 0) { list.innerHTML = `<div style="text-align:center; color:#94a3b8;">${t('hist_empty')}</div>`; }
     else {
-        filteredLogs.forEach(log => {
+        filteredLogs.forEach(rawLog => {
+            const log = { ...rawLog, user_name: esc(rawLog.user_name), extra_info: esc(rawLog.extra_info) };
             const d = new Date(log.time); const timeStr = d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
             let actionWord = t(log.action) || log.action;
             let actionColor = log.action === 'act_del' ? '#ef4444' : (log.action === 'act_edit' ? '#eab308' : '#16a34a');
@@ -323,10 +354,7 @@ async function saveRule() {
         category_ua: defCatUa,
         title_ru: modalRuleData.ru.title,
         content_ru: modalRuleData.ru.content,
-        category_ru: defCatRu,
-        author: (editRuleIdx >= 0 ? rules[editRuleIdx].author : currentUser.username),
-        likes: (editRuleIdx >= 0 ? rules[editRuleIdx].likes : []),
-        locked: (editRuleIdx >= 0 ? rules[editRuleIdx].locked : false)
+        category_ru: defCatRu
     };
 
     let titleToLog = newRule.title_ua || newRule.title_ru;
@@ -335,7 +363,7 @@ async function saveRule() {
         await db.from('rules').update(newRule).eq('id', rules[editRuleIdx].id);
         await addLog('act_edit', 'rule', titleToLog);
     } else {
-        await db.from('rules').insert([newRule]);
+        await db.from('rules').insert([{ ...newRule, author: currentUser.username }]);
         await addLog('act_add', 'rule', titleToLog);
     }
     closeRuleModal();
@@ -354,8 +382,8 @@ async function deleteRule(index) {
 
 // ОНОВЛЕННЯ СПИСКІВ ДЛЯ ВСІХ ТАБІВ ІЗ ЗАХИСТОМ ВІД ПОМИЛОК
 function updateThemeLists() {
-    let wordThemes = new Set(); dictionary.forEach(w => wordThemes.add(w.theme));
-    let exprThemes = new Set(); expressions.forEach(e => exprThemes.add(e.theme));
+    let wordThemes = new Set(); dictionary.forEach(w => wordThemes.add(esc(w.theme)));
+    let exprThemes = new Set(); expressions.forEach(e => exprThemes.add(esc(e.theme)));
 
     let wtList = document.getElementById('wordThemesList');
     if (wtList) wtList.innerHTML = Array.from(wordThemes).map(t => `<option value="${t}">`).join('');
@@ -389,7 +417,7 @@ function updateThemeLists() {
     let ruleCategories = new Set();
     rules.forEach(r => {
         let cat = r[`category_${currentLang}`] || (currentLang === 'ua' ? '💡 Інші правила' : '💡 Другие правила');
-        ruleCategories.add(cat);
+        ruleCategories.add(esc(cat));
     });
 
     let ruleFilter = document.getElementById('ruleFilterCategory');
@@ -438,7 +466,7 @@ function renderRules() {
     });
 
     for (const [category, categoryItems] of Object.entries(groupedRules)) {
-        list.innerHTML += `<h2 class="category-title">${category}</h2>`;
+        list.innerHTML += `<h2 class="category-title">${esc(category)}</h2>`;
 
         const categoryWrapper = document.createElement('div');
         categoryWrapper.className = 'category-wrapper';
@@ -451,9 +479,9 @@ function renderRules() {
             const content = item.content;
 
             const liked = (currentUser && r.likes.includes(currentUser.username)) ? 'liked' : '';
-            const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeTitle = esc(JSON.stringify(title));
 
-            let btns = `<button class="history-btn" onclick="showItemHistory('rule', '${safeTitle}')" title="${t('view_history')}">🕒</button>`;
+            let btns = `<button class="history-btn" onclick="showItemHistory('rule', ${safeTitle})" title="${t('view_history')}">🕒</button>`;
             if (isAdmin()) btns += `<button class="edit-btn" onclick="toggleLock('rule', ${i})" title="${t('locked')}">${r.locked ? '🔒' : '🔓'}</button>`;
             else if (r.locked) btns += `<span style="font-size:1.2rem; margin-right:10px;" title="${t('locked')}">🔒</span>`;
             if (canEdit(r)) btns += `<button class="edit-btn" onclick="openRuleModal(${i})">✏️</button>`;
@@ -462,10 +490,10 @@ function renderRules() {
             htmlCards += `
                 <div class="card">
                     <div class="item-actions" style="position:absolute; top:1rem; right:1rem;">${btns}</div>
-                    <h3 style="padding-right: 150px; margin-top:0;">${title}</h3>
-                    <div class="rule-body">${content}</div>
+                    <h3 style="padding-right: 150px; margin-top:0;">${esc(title)}</h3>
+                    <div class="rule-body">${cleanHtml(content)}</div>
                     <div class="item-meta">
-                        👤 ${r.author} 
+                        👤 ${esc(r.author)} 
                         <button class="like-btn ${liked}" onclick="toggleLike('rule', ${i})">👍 ${r.likes.length}</button>
                     </div>
                 </div>`;
@@ -492,16 +520,16 @@ function renderWords() {
         const trans = w[currentLang] || w['ua'];
         if ((w.cz.toLowerCase().includes(search) || trans.toLowerCase().includes(search)) && (selTheme === 'all' || w.theme === selTheme)) {
             const liked = (currentUser && w.likes.includes(currentUser.username)) ? 'liked' : '';
-            const safeName = w.cz.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            let btns = `<button class="history-btn" onclick="showItemHistory('word', '${safeName}')">🕒</button>`;
+            const safeName = esc(JSON.stringify(w.cz));
+            let btns = `<button class="history-btn" onclick="showItemHistory('word', ${safeName})">🕒</button>`;
             if (isAdmin()) btns += `<button class="edit-btn" onclick="toggleLock('word', ${i})">${w.locked ? '🔒' : '🔓'}</button>`;
             else if (w.locked) btns += `<span style="font-size:1.2rem; margin-right:10px;">🔒</span>`;
             if (canEdit(w)) btns += `<button class="edit-btn" onclick="editWord(${i})">✏️</button>`;
             if (canDelete(w)) btns += `<button class="delete-btn" onclick="deleteWord(${i})">✖</button>`;
 
             list.innerHTML += `<div class="list-row" style="flex-wrap: wrap;"><div style="width:100%; display:flex; justify-content:space-between;">
-                    <div><strong>${w.cz}</strong> — ${trans} <span class="badge">${w.theme}</span></div><div class="item-actions">${btns}</div>
-                </div><div class="item-meta">👤 ${w.author} <button class="like-btn ${liked}" onclick="toggleLike('word', ${i})">👍 ${w.likes.length}</button></div></div>`;
+                    <div><strong>${esc(w.cz)}</strong> — ${esc(trans)} <span class="badge">${esc(w.theme)}</span></div><div class="item-actions">${btns}</div>
+                </div><div class="item-meta">👤 ${esc(w.author)} <button class="like-btn ${liked}" onclick="toggleLike('word', ${i})">👍 ${w.likes.length}</button></div></div>`;
         }
     });
 }
@@ -512,11 +540,11 @@ async function saveWord() {
     if (editWordIdx >= 0 && dictionary[editWordIdx].locked && !isAdmin()) return alert(t('msg_locked'));
     const cz = document.getElementById('wordCz').value.trim(); const ua = document.getElementById('wordUa').value.trim(); const ru = document.getElementById('wordRu').value.trim() || ua; let theme = document.getElementById('wordTheme').value.trim() || 'Різне';
     if (!cz || !ua) return;
-    let w = { cz, ua, ru, theme, author: (editWordIdx >= 0 ? dictionary[editWordIdx].author : currentUser.username), likes: (editWordIdx >= 0 ? dictionary[editWordIdx].likes : []), locked: (editWordIdx >= 0 ? dictionary[editWordIdx].locked : false) };
+    let w = { cz, ua, ru, theme };
     if (editWordIdx >= 0) {
         let diffs = []; if (dictionary[editWordIdx].cz !== w.cz) diffs.push(`CZ: ${dictionary[editWordIdx].cz}➔${w.cz}`); if (dictionary[editWordIdx].ua !== w.ua) diffs.push(`UA: ${dictionary[editWordIdx].ua}➔${w.ua}`);
         await db.from('dictionary').update(w).eq('id', dictionary[editWordIdx].id); await addLog('act_edit', 'word', dictionary[editWordIdx].cz, diffs.join(' | ')); editWordIdx = -1;
-    } else { await db.from('dictionary').insert([w]); await addLog('act_add', 'word', w.cz, `${w.ua}`); }
+    } else { await db.from('dictionary').insert([{ ...w, author: currentUser.username }]); await addLog('act_add', 'word', w.cz, `${w.ua}`); }
     document.getElementById('wordCz').value = ''; document.getElementById('wordUa').value = ''; document.getElementById('wordRu').value = ''; await loadCloudData();
 }
 
@@ -537,16 +565,16 @@ function renderExpressions() {
         const trans = e[currentLang] || e['ua'];
         if ((e.cz.toLowerCase().includes(search) || trans.toLowerCase().includes(search)) && (selTheme === 'all' || e.theme === selTheme)) {
             const liked = (currentUser && e.likes.includes(currentUser.username)) ? 'liked' : '';
-            const safeName = e.cz.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            let btns = `<button class="history-btn" onclick="showItemHistory('expr', '${safeName}')">🕒</button>`;
+            const safeName = esc(JSON.stringify(e.cz));
+            let btns = `<button class="history-btn" onclick="showItemHistory('expr', ${safeName})">🕒</button>`;
             if (isAdmin()) btns += `<button class="edit-btn" onclick="toggleLock('expr', ${i})">${e.locked ? '🔒' : '🔓'}</button>`;
             else if (e.locked) btns += `<span style="font-size:1.2rem; margin-right:10px;">🔒</span>`;
             if (canEdit(e)) btns += `<button class="edit-btn" onclick="editExpr(${i})">✏️</button>`;
             if (canDelete(e)) btns += `<button class="delete-btn" onclick="deleteExpr(${i})">✖</button>`;
 
             list.innerHTML += `<div class="list-row" style="flex-wrap: wrap;"><div style="width:100%; display:flex; justify-content:space-between;">
-                    <div><strong>${e.cz}</strong> — ${trans} <span class="badge">${e.theme}</span></div><div class="item-actions">${btns}</div>
-                </div><div class="item-meta">👤 ${e.author} <button class="like-btn ${liked}" onclick="toggleLike('expr', ${i})">👍 ${e.likes.length}</button></div></div>`;
+                    <div><strong>${esc(e.cz)}</strong> — ${esc(trans)} <span class="badge">${esc(e.theme)}</span></div><div class="item-actions">${btns}</div>
+                </div><div class="item-meta">👤 ${esc(e.author)} <button class="like-btn ${liked}" onclick="toggleLike('expr', ${i})">👍 ${e.likes.length}</button></div></div>`;
         }
     });
 }
@@ -557,11 +585,11 @@ async function saveExpression() {
     if (editExprIdx >= 0 && expressions[editExprIdx].locked && !isAdmin()) return alert(t('msg_locked'));
     const cz = document.getElementById('exprCz').value.trim(); const ua = document.getElementById('exprUa').value.trim(); const ru = document.getElementById('exprRu').value.trim() || ua; let theme = document.getElementById('exprTheme').value.trim() || 'Різне';
     if (!cz || !ua) return;
-    let e = { cz, ua, ru, theme, author: (editExprIdx >= 0 ? expressions[editExprIdx].author : currentUser.username), likes: (editExprIdx >= 0 ? expressions[editExprIdx].likes : []), locked: (editExprIdx >= 0 ? expressions[editExprIdx].locked : false) };
+    let e = { cz, ua, ru, theme };
     if (editExprIdx >= 0) {
         let diffs = []; if (expressions[editExprIdx].cz !== e.cz) diffs.push(`CZ: ${expressions[editExprIdx].cz}➔${e.cz}`); if (expressions[editExprIdx].ua !== e.ua) diffs.push(`UA: ${expressions[editExprIdx].ua}➔${e.ua}`);
         await db.from('expressions').update(e).eq('id', expressions[editExprIdx].id); await addLog('act_edit', 'expr', expressions[editExprIdx].cz, diffs.join(' | ')); editExprIdx = -1;
-    } else { await db.from('expressions').insert([e]); await addLog('act_add', 'expr', e.cz, `${e.ua}`); }
+    } else { await db.from('expressions').insert([{ ...e, author: currentUser.username }]); await addLog('act_add', 'expr', e.cz, `${e.ua}`); }
     document.getElementById('exprCz').value = ''; document.getElementById('exprUa').value = ''; document.getElementById('exprRu').value = ''; await loadCloudData();
 }
 
@@ -574,8 +602,8 @@ function renderStickers() {
     stickers.forEach((s, i) => {
         let rotation = (i % 2 === 0 ? -3 : 3) + (Math.random() * 2);
         let delBtn = canDelete(s) ? `<button class="sticker-delete" onclick="deleteSticker(${i})">✖</button>` : '';
-        let imgHtml = s.image ? `<img src="${s.image}" style="max-width: 100%; border-radius: 5px; margin-top: 10px; max-height: 150px; object-fit: cover; border: 1px solid rgba(0,0,0,0.1);">` : '';
-        board.innerHTML += `<div class="sticker" style="background-color: ${s.color}; transform: rotate(${rotation}deg);"><div class="pin">📌</div><div class="sticker-author">👤 ${s.author}</div><div>${s.text}</div>${imgHtml}${delBtn}</div>`;
+        let imgHtml = s.image ? `<img src="${esc(s.image)}" style="max-width: 100%; border-radius: 5px; margin-top: 10px; max-height: 150px; object-fit: cover; border: 1px solid rgba(0,0,0,0.1);">` : '';
+        board.innerHTML += `<div class="sticker" style="background-color: ${esc(s.color)}; transform: rotate(${rotation}deg);"><div class="pin">📌</div><div class="sticker-author">👤 ${esc(s.author)}</div><div>${esc(s.text)}</div>${imgHtml}${delBtn}</div>`;
     });
 }
 
@@ -620,7 +648,7 @@ function setLang(lang, isInit = false) {
     }
 
     checkAuth();
-    if (!isInit) { updateThemeLists(); renderRules(); renderWords(); renderExpressions(); renderHistory(); }
+    if (!isInit) { updateThemeLists(); renderRules(); renderWords(); renderExpressions(); renderHistory(); if (typeof cardsRefresh === 'function') cardsRefresh(); }
 }
 
 function switchTab(tabId) { 

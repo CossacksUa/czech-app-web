@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="cards.css">
 </head>
 
 <body class="role-guest">
@@ -32,6 +34,7 @@
                 <button class="nav-btn active" onclick="switchTab('rules')" data-i18n="nav_rules">Правила</button>
                 <button class="nav-btn" onclick="switchTab('dictionary')" data-i18n="nav_words">Словник</button>
                 <button class="nav-btn" onclick="switchTab('expressions')" data-i18n="nav_expr">Вирази</button>
+                <button class="nav-btn" onclick="switchTab('cards'); cardsRefresh();" data-i18n="nav_cards">🃏 Картки</button>
                 <button class="nav-btn" onclick="location.href='writing.html'">Тренажер письма</button>
                 <button class="nav-btn" onclick="switchTab('stickers')" data-i18n="nav_stickers">📌 Стікери</button>
                 <button class="nav-btn admin-only" onclick="switchTab('settings')" data-i18n="nav_data">⚙️ Дані</button>
@@ -297,6 +300,43 @@
                     onclick="fakeLogout()" data-i18n="btn_logout">Вийти з акаунта</button>
             </div>
         </div>
+        <!-- ================= ВКЛАДКА: КАРТКИ (flashcards) ================= -->
+        <div id="tab-cards" class="tab-content">
+            <div class="content-area cards-wrap">
+                <h2 id="cardsTitle">Картки для повторення</h2>
+
+                <!-- Налаштування -->
+                <div id="cardsSetup">
+                    <div class="cards-grid">
+                        <div><label id="lblCardsSource" for="cardsSource"></label>
+                            <select id="cardsSource" onchange="cardsOnSourceChange()"></select></div>
+                        <div><label id="lblCardsTheme" for="cardsTheme"></label>
+                            <select id="cardsTheme" onchange="cardsRenderStats()"></select></div>
+                        <div><label id="lblCardsDir" for="cardsDir"></label>
+                            <select id="cardsDir"></select></div>
+                        <div><label id="lblCardsMode" for="cardsMode"></label>
+                            <select id="cardsMode"></select></div>
+                        <div><label id="lblCardsLimit" for="cardsLimit"></label>
+                            <select id="cardsLimit"></select></div>
+                    </div>
+                    <div id="cardsStats" class="cards-stats"></div>
+                    <div id="cardsMsg" class="cards-msg"></div>
+                    <div class="cards-actions">
+                        <button class="btn-primary" id="cardsStartBtn" onclick="cardsStart()"></button>
+                        <button class="btn-secondary" id="cardsResetBtn" onclick="cardsResetProgress()"></button>
+                    </div>
+                    <p id="cardsNote" class="cards-note"></p>
+                </div>
+
+                <!-- Сесія -->
+                <div id="cardsSession" style="display:none;">
+                    <div id="cardsSessionBody"></div>
+                    <button class="btn-secondary" id="cardsExitBtn" style="margin-top:12px; width:100%;" onclick="cardsBack()">Завершити</button>
+                </div>
+
+                <!-- Результат -->
+                <div id="cardsFinish" style="display:none;"></div>
+            </div>
         </div>
     </main>
 
@@ -339,6 +379,7 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="cards.js"></script>
 </body>
 
 </html>
